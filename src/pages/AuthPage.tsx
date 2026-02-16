@@ -36,28 +36,24 @@ const AuthPage = () => {
 
         try {
             if (candidateMode === "signup") {
-                // Submit to Google Sheets
-                await googleSheets.submitCandidate({
-                    fullName,
-                    email,
-                    role: 'candidate'
-                });
+                // Register in 'Users' sheet
+                await googleSheets.registerUser(email, password, fullName);
 
-                // Auto-login after signup
+                // Auto-login (store in local storage)
                 await signIn(email, "candidate", fullName);
 
                 toast({ title: "Account created!", description: "Welcome to the portal." });
                 navigate("/candidate-form");
             } else {
-                // Simplified "Login" for now 
-                // Since we don't have a backend to verify password against, 
-                // we'll just allow entry if email is present (simulated).
-                // In a real Google Sheet app, we'd need to fetch the sheet data to verify, 
-                // but that requires exposing all user emails to the client or a proxy.
-                // For this request, we assume "Enter Email to Resume" is sufficient for the demo.
+                // Verify credentials against 'Users' sheet
+                const response = await googleSheets.login(email, password);
 
-                await signIn(email, "candidate");
-                navigate("/candidate-form");
+                if (response.result === "success") {
+                    await signIn(email, "candidate", response.user.fullName);
+                    navigate("/candidate-form");
+                } else {
+                    throw new Error(response.error || "Login failed");
+                }
             }
         } catch (error: any) {
             toast({ title: "Authentication failed", description: error.message || "Failed to connect", variant: "destructive" });

@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const DashboardSettings = () => {
   const { user, roles } = useAuth();
-
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-foreground">Settings</h1>

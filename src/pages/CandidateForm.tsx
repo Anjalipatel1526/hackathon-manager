@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, FileText, Upload, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { googleSheets } from "@/lib/googleSheets";
+import { Progress } from "@/components/ui/progress";
 
 // Hardcode departments since we removed Supabase
 const DEPARTMENTS = ["HR", "Tech", "Finance", "Marketing", "Operations"];
@@ -34,6 +35,8 @@ const CandidateForm = () => {
   const [address, setAddress] = useState("");
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [loading, setLoading] = useState(false);
+  const [submitStep, setSubmitStep] = useState<string>("");
+  const [progress, setProgress] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
 
@@ -73,6 +76,8 @@ const CandidateForm = () => {
     }
 
     setLoading(true);
+    setProgress(10);
+    setSubmitStep("Preparing data...");
     try {
       // 1. Prepare Data
       const candidateData = {
@@ -85,7 +90,14 @@ const CandidateForm = () => {
 
       // 2. Prepare Files
       const fileData: Record<string, any> = {};
-      for (const [key, file] of Object.entries(files)) {
+      const fileKeys = Object.entries(files).filter(([_, file]) => !!file);
+      const totalFiles = fileKeys.length;
+
+      setProgress(20);
+      setSubmitStep(`Converting files (0/${totalFiles})...`);
+
+      let processedCount = 0;
+      for (const [key, file] of fileKeys) {
         if (file) {
           const base64 = await convertFileToBase64(file);
           fileData[key] = {
@@ -93,18 +105,28 @@ const CandidateForm = () => {
             type: file.type,
             base64: base64
           };
+          processedCount++;
+          const conversionProgress = 20 + (processedCount / totalFiles) * 30;
+          setProgress(conversionProgress);
+          setSubmitStep(`Converting files (${processedCount}/${totalFiles})...`);
         }
       }
 
-      // 3. Submit to Google Sheets
-      await googleSheets.submitCandidateDocuments(candidateData, fileData);
+      // 3. Submit to Google Sheets (Applications sheet)
+      setProgress(60);
+      setSubmitStep("Uploading to Google Sheets... (This may take a moment)");
+      await googleSheets.submitApplication(candidateData, fileData);
 
+      setProgress(100);
+      setSubmitStep("Success!");
       setSubmitted(true);
       toast({ title: "Success", description: "Information submitted successfully." });
     } catch (err: any) {
       toast({ title: "Submission failed", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
+      setProgress(0);
+      setSubmitStep("");
     }
   };
 
@@ -208,12 +230,18 @@ const CandidateForm = () => {
                 ))}
               </div>
 
+              {loading && (
+                <div className="space-y-2 py-4">
+                  <div className="flex justify-between text-xs font-medium text-muted-foreground">
+                    <span>{submitStep}</span>
+                    <span>{Math.round(progress)}%</span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
+                </div>
+              )}
+
               <Button type="submit" className="w-full" size="lg" disabled={loading}>
-                {loading ? (
-                  <><div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" /> Submitting...</>
-                ) : (
-                  "Submit Documents"
-                )}
+                {loading ? "Submitting..." : "Submit Documents"}
               </Button>
             </CardContent>
           </form>

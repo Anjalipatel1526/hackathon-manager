@@ -1,19 +1,47 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Clock, CheckCircle, Building2 } from "lucide-react";
+import { googleSheets } from "@/lib/googleSheets";
+import { useToast } from "@/hooks/use-toast";
 
 // Hardcoded since Supabase is removed
 const DEPARTMENTS = ["HR", "Tech", "Finance", "Marketing", "Operations"];
 
 const Dashboard = () => {
-  const [candidates, setCandidates] = useState<any[]>([]); // Mock data type
+  const [candidates, setCandidates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Mock data fetching since we moved to Google Sheets and don't have read API setup yet
-    // In a real scenario, we might fetch from the Sheet CSV publish link
-    setCandidates([]);
-    setLoading(false);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const response = await googleSheets.getApplications();
+        if (response.result === "success") {
+          // Map Google Sheets data format (lowercase with underscores) to expected UI format
+          const formattedData = (response.data || []).map((app: any) => ({
+            id: app.timestamp || Math.random().toString(),
+            full_name: app.fullname || "Unknown",
+            email: app.email || "",
+            department: app.department || "Unassigned",
+            status: app.status || "Pending",
+          }));
+          setCandidates(formattedData);
+        } else {
+          throw new Error(response.error || "Failed to fetch data");
+        }
+      } catch (error: any) {
+        console.error("Dashboard fetch error:", error);
+        toast({
+          title: "Dashboard Error",
+          description: error.message || "Could not fetch stats from Google Sheets.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   const total = candidates.length;

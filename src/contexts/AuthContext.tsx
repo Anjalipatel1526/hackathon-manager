@@ -18,6 +18,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
   isHr: boolean;
+  roles: string[];
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,9 +28,21 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => { },
   isAuthenticated: false,
   isHr: false,
+  roles: [],
 });
 
 export const useAuth = () => useContext(AuthContext);
+
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -52,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, role: "candidate" | "hr", fullName?: string) => {
     // Simulate login
     const newUser: User = {
-      id: crypto.randomUUID(), // specific ID not strictly needed for Sheets unless we track it
+      id: generateUUID(), // Using fallback-safe UUID generator
       email,
       user_metadata: {
         full_name: fullName || email.split("@")[0],
@@ -77,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isHr = user?.user_metadata?.role === "hr";
+  const roles = user?.user_metadata?.role ? [user.user_metadata.role] : [];
 
   return (
     <AuthContext.Provider value={{
@@ -85,7 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signIn,
       signOut,
       isAuthenticated: !!user,
-      isHr
+      isHr,
+      roles
     }}>
       {children}
     </AuthContext.Provider>
