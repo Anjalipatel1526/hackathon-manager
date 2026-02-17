@@ -1,5 +1,7 @@
 export interface CandidateData {
-    fullName: string;
+    firstName?: string;
+    lastName?: string;
+    fullName?: string;
     email: string;
     phone?: string;
     department?: string;
@@ -8,7 +10,7 @@ export interface CandidateData {
 }
 
 // User provided URL
-export const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwdrfCdKmzgf9v3p83K6e_CKOsQRMcYzW0hMwleKSsoOGefbIB_NtEqsQLqUtV82f_chg/exec";
+export const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbxYQ1pirWB9V8ZJobjm-oow9gsKPdwckIZ_NL7rwdFGbGmAbIwi98sfy-4JhRor4qCEug/exec";
 
 export const googleSheets = {
 

@@ -14,18 +14,19 @@ import { googleSheets } from "@/lib/googleSheets";
 const DEPARTMENTS = ["HR", "Tech", "Finance", "Marketing", "Operations"];
 
 const DOCUMENT_TYPES = [
-  { key: "photo", label: "Photo", accept: "image/jpeg,image/png" },
-  { key: "resume", label: "Resume", accept: ".pdf,image/jpeg,image/png" },
-  { key: "aadhaar", label: "Aadhaar Card", accept: ".pdf,image/jpeg,image/png" },
-  { key: "pan", label: "PAN Card", accept: ".pdf,image/jpeg,image/png" },
-  { key: "passbook", label: "Bank Passbook", accept: ".pdf,image/jpeg,image/png" },
+  { key: "photo", label: "Photo", accept: ".pdf" },
+  { key: "resume", label: "Resume", accept: ".pdf" },
+  { key: "aadhaar", label: "Aadhaar Card", accept: ".pdf" },
+  { key: "pan", label: "PAN Card", accept: ".pdf" },
+  { key: "passbook", label: "Bank Passbook", accept: ".pdf" },
 ] as const;
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 
 const CandidateForm = () => {
   // Always start with empty fields for public access
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
 
   const [phone, setPhone] = useState("");
@@ -38,7 +39,7 @@ const CandidateForm = () => {
 
   const handleFileChange = (key: string, file: File | null) => {
     if (file && file.size > MAX_FILE_SIZE) {
-      toast({ title: "File too large", description: "Maximum file size is 5MB", variant: "destructive" });
+      toast({ title: "File too large", description: "Maximum file size is 1MB", variant: "destructive" });
       return;
     }
     setFiles((prev) => ({ ...prev, [key]: file }));
@@ -61,8 +62,8 @@ const CandidateForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!fullName || !email) {
-      toast({ title: "Name and Email required", description: "Please fill in your basic details.", variant: "destructive" });
+    if (!firstName || !lastName || !email) {
+      toast({ title: "Name and Email required", description: "Please fill in your first name, last name, and email.", variant: "destructive" });
       return;
     }
 
@@ -75,7 +76,8 @@ const CandidateForm = () => {
     try {
       // 1. Prepare Data
       const candidateData = {
-        fullName,
+        firstName,
+        lastName,
         email,
         phone,
         department,
@@ -146,13 +148,17 @@ const CandidateForm = () => {
               {/* Personal fields */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name *</Label>
-                  <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required maxLength={100} />
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required maxLength={50} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required maxLength={255} />
+                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required maxLength={50} />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required maxLength={255} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -200,7 +206,7 @@ const CandidateForm = () => {
                           </button>
                         </div>
                       ) : (
-                        <p className="text-xs text-muted-foreground">PDF, JPG, PNG — Max 5MB</p>
+                        <p className="text-xs text-muted-foreground">PDF only — Max 1MB</p>
                       )}
                     </div>
                     <label className="cursor-pointer rounded-md bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors">
@@ -225,11 +231,7 @@ const CandidateForm = () => {
           </form>
         </Card>
 
-        <div className="mt-8 text-center pb-10">
-          <p className="text-sm text-muted-foreground">
-            Are you an HR Admin? <a href="/login" className="text-primary font-medium hover:underline">HR Portal Login</a>
-          </p>
-        </div>
+
       </div>
     </div>
   );
