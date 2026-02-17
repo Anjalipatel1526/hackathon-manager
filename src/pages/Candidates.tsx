@@ -34,6 +34,7 @@ interface Candidate {
   department: string;
   status: string;
   address: string;
+  candidate_type: string;
   photo?: string;
   resume?: string;
   aadhaar?: string;
@@ -68,6 +69,7 @@ const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => 
           email: app.email || "",
           phone: app.phone || "",
           department: app.department || "Unassigned",
+          candidate_type: app.candidatetype || "Full Time",
           status: app.status || "Pending",
           address: app.address || "",
           photo: app.photo || "",
@@ -209,6 +211,7 @@ const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => 
                 <TableHead>Email</TableHead>
                 <TableHead className="hidden md:table-cell">Phone</TableHead>
                 <TableHead>Department</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -217,7 +220,7 @@ const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => 
               {isLoading && candidates.length === 0 ? (
                 <TableSkeleton />
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   {isLoading ? "Loading data from Google Sheets..." : "No candidates found. If you just submitted, try refreshing in a moment."}
                 </TableCell></TableRow>
               ) : (
@@ -227,6 +230,11 @@ const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => 
                     <TableCell>{c.email}</TableCell>
                     <TableCell className="hidden md:table-cell">{c.phone}</TableCell>
                     <TableCell><span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{c.department}</span></TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={c.candidate_type === "Intern" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-blue-200 bg-blue-50 text-blue-700"}>
+                        {c.candidate_type}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${c.status === "Verified" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
                         {c.status}
@@ -275,13 +283,19 @@ const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => 
                   <p className="text-sm font-medium">{selectedCandidate.department}</p>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Candidate Type</label>
+                  <p className="text-sm font-medium">{selectedCandidate.candidate_type}</p>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Phone</label>
+                  <p className="text-sm font-medium">{selectedCandidate.phone || "N/A"}</p>
+                </div>
+              </div>
               <div>
                 <label className="text-xs font-bold text-muted-foreground uppercase">Email</label>
                 <p className="text-sm font-medium">{selectedCandidate.email}</p>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-muted-foreground uppercase">Phone</label>
-                <p className="text-sm font-medium">{selectedCandidate.phone || "N/A"}</p>
               </div>
               <div>
                 <label className="text-xs font-bold text-muted-foreground uppercase">Address</label>

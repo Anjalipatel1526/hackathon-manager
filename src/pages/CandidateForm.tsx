@@ -5,10 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, FileText, Upload, X } from "lucide-react";
 import { googleSheets } from "@/lib/googleSheets";
-
 
 // Hardcode departments since we removed Supabase
 const DEPARTMENTS = ["HR", "Tech", "Finance", "Marketing", "Operations"];
@@ -31,6 +31,7 @@ const CandidateForm = () => {
 
   const [phone, setPhone] = useState("");
   const [department, setDepartment] = useState("");
+  const [candidateType, setCandidateType] = useState("Full Time");
   const [address, setAddress] = useState("");
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [loading, setLoading] = useState(false);
@@ -81,6 +82,7 @@ const CandidateForm = () => {
         email,
         phone,
         department,
+        candidateType,
         address
       };
 
@@ -165,18 +167,44 @@ const CandidateForm = () => {
                   <Label htmlFor="phone">Phone Number *</Label>
                   <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} required maxLength={20} />
                 </div>
+                {/* Department Selection */}
                 <div className="space-y-2">
-                  <Label>Department *</Label>
-                  <Select value={department} onValueChange={(v) => setDepartment(v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Label htmlFor="department">Applying for Department *</Label>
+                  <Select onValueChange={setDepartment} value={department}>
+                    <SelectTrigger id="department">
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
                     <SelectContent>
-                      {DEPARTMENTS.map((d) => (
-                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      {DEPARTMENTS.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {/* Candidate Type Selection */}
+              <div className="space-y-3">
+                <Label>Candidate Type *</Label>
+                <RadioGroup
+                  defaultValue="Full Time"
+                  value={candidateType}
+                  onValueChange={setCandidateType}
+                  className="flex flex-wrap gap-6 pt-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Full Time" id="full-time" />
+                    <Label htmlFor="full-time" className="cursor-pointer font-normal">Full Time</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Intern" id="intern" />
+                    <Label htmlFor="intern" className="cursor-pointer font-normal">Intern</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
                 <Textarea
@@ -222,16 +250,12 @@ const CandidateForm = () => {
                 ))}
               </div>
 
-
-
               <Button type="submit" className="w-full" size="lg" disabled={loading}>
                 {loading ? "Submitting..." : "Submit Documents"}
               </Button>
             </CardContent>
           </form>
         </Card>
-
-
       </div>
     </div>
   );

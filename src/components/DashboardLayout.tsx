@@ -12,13 +12,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, Building2, Clock, CheckCircle, Settings, LogOut, FileText } from "lucide-react";
+import { LayoutDashboard, Users, Clock, CheckCircle, Settings, LogOut, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "All Candidates", url: "/dashboard/candidates", icon: Users },
-  { title: "Department View", url: "/dashboard/departments", icon: Building2 },
   { title: "Pending", url: "/dashboard/pending", icon: Clock },
   { title: "Verified", url: "/dashboard/verified", icon: CheckCircle },
   { title: "Settings", url: "/dashboard/settings", icon: Settings },

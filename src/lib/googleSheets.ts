@@ -6,6 +6,7 @@ export interface CandidateData {
     phone?: string;
     department?: string;
     address?: string;
+    candidateType?: string;
     [key: string]: any;
 }
 

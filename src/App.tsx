@@ -5,14 +5,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import AuthPage from "./pages/AuthPage";
-import CandidateForm from "./pages/CandidateForm";
+import AuthPage from "@/pages/AuthPage";
+import CandidateForm from "@/pages/CandidateForm";
 import DashboardLayout from "./components/DashboardLayout";
-import Dashboard from "./pages/Dashboard";
-import Candidates from "./pages/Candidates";
-import Departments from "./pages/Departments";
-import DashboardSettings from "./pages/DashboardSettings";
-import NotFound from "./pages/NotFound";
+import Dashboard from "@/pages/Dashboard";
+import Candidates from "@/pages/Candidates";
+import DashboardSettings from "@/pages/DashboardSettings";
+import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -46,14 +45,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/dashboard/departments"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout><Departments /></DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
+
             <Route
               path="/dashboard/pending"
               element={
