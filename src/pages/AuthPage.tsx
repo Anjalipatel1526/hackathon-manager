@@ -11,14 +11,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { googleSheets } from "@/lib/googleSheets";
 
 const AuthPage = () => {
-    const [activeTab, setActiveTab] = useState("candidate");
-    const [candidateMode, setCandidateMode] = useState<"login" | "signup">("signup");
     const { signIn } = useAuth();
 
     // Form States
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [fullName, setFullName] = useState("");
     const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
@@ -27,39 +24,6 @@ const AuthPage = () => {
     const resetForm = () => {
         setEmail("");
         setPassword("");
-        setFullName("");
-    };
-
-    const handleCandidateAuth = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-
-        try {
-            if (candidateMode === "signup") {
-                // Register in 'Users' sheet
-                await googleSheets.registerUser(email, password, fullName);
-
-                // Auto-login (store in local storage)
-                await signIn(email, "candidate", fullName);
-
-                toast({ title: "Account created!", description: "Welcome to the portal." });
-                navigate("/candidate-form");
-            } else {
-                // Verify credentials against 'Users' sheet
-                const response = await googleSheets.login(email, password);
-
-                if (response.result === "success") {
-                    await signIn(email, "candidate", response.user.fullName);
-                    navigate("/candidate-form");
-                } else {
-                    throw new Error(response.error || "Login failed");
-                }
-            }
-        } catch (error: any) {
-            toast({ title: "Authentication failed", description: error.message || "Failed to connect", variant: "destructive" });
-        } finally {
-            setLoading(false);
-        }
     };
 
     const handleHRLogin = async (e: React.FormEvent) => {

@@ -11,26 +11,7 @@ export interface CandidateData {
 export const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbxIC-gFF6VkmNjrFZJAdpbvP-SDYLYe9VXj_95wkVYJ-VdeSiK8gXEoe_P3zEgrcDO2zQ/exec";
 
 export const googleSheets = {
-    /**
-     * Registers a new user in the 'Users' sheet
-     */
-    async registerUser(email: string, password: string, fullName: string) {
-        return this.sendRequest({
-            action: "register_user",
-            data: { email, password, fullName }
-        }, true); // Use no-cors for robustness
-    },
 
-    /**
-     * Logs in a user by checking the 'Users' sheet
-     * Login MUST wait for response to verify credentials.
-     */
-    async login(email: string, password: string) {
-        return this.sendRequest({
-            action: "login_user",
-            data: { email, password }
-        }, false);
-    },
 
     /**
      * Submits application data to the 'Applications' sheet
