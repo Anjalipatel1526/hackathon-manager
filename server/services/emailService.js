@@ -38,11 +38,21 @@ export const sendConfirmationEmail = async (to, subject, message) => {
 /**
  * Phase 1 Email
  */
-export const sendPhase1Email = async (email, name, isTeam = false) => {
+export const sendPhase1Email = async (email, name, registrationId, isTeam = false) => {
     const subject = `Project Description Received - ${name}`;
     const message = isTeam
-        ? `Hello ${name} Team Leader,\n\nYour team's project description has been received successfully. The HR team will review it and contact you soon.`
-        : `Hello ${name},\n\nYour project description has been received successfully. The HR team will review it and contact you soon.`;
+        ? `Hello ${name} Team Leader,\n\nYour team's phase 1 registration is completed. Please wait for phase 2. Your code is ${registrationId}.`
+        : `Hello ${name},\n\nYour phase 1 registration is completed. Please wait for phase 2. Your code is ${registrationId}.`;
+
+    await sendConfirmationEmail(email, subject, message);
+};
+
+/**
+ * Phase 2 Broadcast Email
+ */
+export const sendPhase2BroadcastEmail = async (email, name, isTeam = false) => {
+    const subject = `Phase 2 Registration Open - ${name}`;
+    const message = `Registration is now open for Phase 2.\n\nPlease submit your project through the GitHub link and upload your README file.`;
 
     await sendConfirmationEmail(email, subject, message);
 };

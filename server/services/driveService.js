@@ -63,23 +63,52 @@ export const uploadFile = async (filePath, fileName, folderId) => {
 };
 
 /**
- * Ensures the basic folder structure exists and returns the target folder ID
- * Structure: Phase X / Individual|Team / Name|TeamName
+ * Uploads string content as a text file to Drive
  */
-export const getOrCreateTargetFolder = async (phase, registrationType, identifier) => {
-    // 1. Get or create Phase folder
-    let phaseFolderId = await findFolderByName(`Phase ${phase}`);
-    if (!phaseFolderId) {
-        phaseFolderId = await createFolder(`Phase ${phase}`);
+export const uploadTextAsFile = async (textContent, fileName, folderId) => {
+    const fileMetadata = {
+        name: fileName,
+        parents: [folderId],
+    };
+    const media = {
+        mimeType: 'text/plain',
+        body: textContent,
+    };
+
+    try {
+        const file = await drive.files.create({
+            resource: fileMetadata,
+            media: media,
+            fields: 'id, webViewLink',
+        });
+        return {
+            id: file.data.id,
+            link: file.data.webViewLink,
+        };
+    } catch (err) {
+        console.error('Error uploading text file to Drive:', err);
+        throw err;
+    }
+};
+
+/**
+ * Ensures the folder structure exists and returns the target folder ID
+ * Structure: Applications / Individual|Team / Name|TeamName
+ */
+export const getOrCreateTargetFolder = async (registrationType, identifier) => {
+    // 1. Get or create Root folder
+    let rootFolderId = await findFolderByName(`Applications`);
+    if (!rootFolderId) {
+        rootFolderId = await createFolder(`Applications`);
     }
 
     // 2. Get or create Type folder
-    let typeFolderId = await findFolderByName(registrationType, phaseFolderId);
+    let typeFolderId = await findFolderByName(registrationType, rootFolderId);
     if (!typeFolderId) {
-        typeFolderId = await createFolder(registrationType, phaseFolderId);
+        typeFolderId = await createFolder(registrationType, rootFolderId);
     }
 
-    // 3. Create Specific folder (always new for clarity or check if exists)
+    // 3. Create Specific folder
     let specificFolderId = await findFolderByName(identifier, typeFolderId);
     if (!specificFolderId) {
         specificFolderId = await createFolder(identifier, typeFolderId);

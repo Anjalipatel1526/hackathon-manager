@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import applicationRoutes from './routes/application.js';
+import settingsRoutes from './routes/settings.js';
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use('/api/settings', settingsRoutes);
 app.use('/api', applicationRoutes);
 
 // Health Check

@@ -24,13 +24,28 @@ const TRACKS = [
   "Cutting Agents"
 ];
 
+const toBase64 = (file: File) => new Promise<{ base64: string, name: string, type: string }>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onload = () => {
+    const base64String = (reader.result as string).split(',')[1];
+    resolve({
+      base64: base64String,
+      name: file.name,
+      type: file.type
+    });
+  };
+  reader.onerror = error => reject(error);
+});
+
 const CandidateForm = () => {
+  const [globalPhase, setGlobalPhase] = useState<number>(1);
   const [phase, setPhase] = useState<"1" | "2">("1");
   const [regType, setRegType] = useState<"Individual" | "Team">("Individual");
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [showCodePopup, setShowCodePopup] = useState(() => !localStorage.getItem("codekar_reg_id"));
+  const [showCodePopup, setShowCodePopup] = useState(false); // Controlled by effect
   const [regIdInput, setRegIdInput] = useState(() => localStorage.getItem("codekar_reg_id") || "");
   const { toast } = useToast();
 
@@ -77,6 +92,8 @@ const CandidateForm = () => {
 
     setFetchingData(true);
     try {
+
+
       const data = await candidateApi.getApplicationByRegId(regIdInput);
       if (data) {
         setFormData({
@@ -124,12 +141,30 @@ const CandidateForm = () => {
   // Automatic fetch when code is entered
   useEffect(() => {
     const checkAndFetch = async () => {
-      if (regIdInput.length === 10 && regIdInput.startsWith("REG-")) {
+      if (regIdInput.length >= 5) {
         await handleFetchData();
       }
     };
     checkAndFetch();
   }, [regIdInput]);
+
+  useEffect(() => {
+    const initPhase = async () => {
+      try {
+        const currentGlobalPhase = await candidateApi.getPhase();
+        setGlobalPhase(currentGlobalPhase);
+        setPhase(currentGlobalPhase.toString() as "1" | "2");
+
+        // Always authenticate
+        if (!localStorage.getItem("codekar_reg_id")) {
+          setShowCodePopup(true);
+        }
+      } catch (error) {
+        console.error("Failed to load Phase");
+      }
+    }
+    initPhase();
+  }, []);
 
   const handleClearSession = () => {
     localStorage.removeItem("codekar_reg_id");
@@ -158,6 +193,8 @@ const CandidateForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Auth requirement strict for everyone
     if (!formData.registrationId) {
       toast({ title: "Authentication Required", description: "Please enter your unique code first.", variant: "destructive" });
       return;
@@ -165,22 +202,43 @@ const CandidateForm = () => {
 
     setLoading(true);
     try {
-      const data = new FormData();
-      data.append("registrationId", formData.registrationId);
+      if (globalPhase === 1) {
+        const payload: any = {
+          data: {
+            registrationId: formData.registrationId,
+            projectDescription: formData.projectDescription,
+          },
+          files: {}
+        };
+        if (files.ppt) {
+          payload.files.ppt = await toBase64(files.ppt);
+        }
 
-      // Submit what is present
-      if (formData.projectDescription) data.append("projectDescription", formData.projectDescription);
-      if (files.ppt) data.append("ppt", files.ppt);
-      if (formData.githubRepoLink) data.append("githubRepoLink", formData.githubRepoLink);
-      if (files.readme) data.append("readme", files.readme);
-      if (files.finalZip) data.append("finalZip", files.finalZip);
+        await candidateApi.submitPhase1(payload);
+        toast({ title: "Upload Successful", description: "Your phase 1 project details have been updated." });
+      } else {
+        // Phase 2 Submission
+        const payload: any = {
+          data: {
+            registrationId: formData.registrationId,
+            githubRepoLink: formData.githubRepoLink,
+          },
+          files: {}
+        };
+        if (files.readme) {
+          payload.files.readme = await toBase64(files.readme);
+        }
+        if (files.finalZip) {
+          payload.files.finalZip = await toBase64(files.finalZip);
+        }
 
-      // We use submitPhase2 as it's an update-style endpoint on the backend
-      await candidateApi.submitPhase2(data);
-      toast({ title: "Upload Successful", description: "Your project files have been updated." });
+        await candidateApi.submitPhase2(payload);
+        toast({ title: "Upload Successful", description: "Your project files have been updated." });
+      }
+
       setSubmitted(true);
     } catch (err: any) {
-      toast({ title: "Upload Failed", description: err.response?.data?.error || err.message, variant: "destructive" });
+      toast({ title: "Submission Failed", description: err.response?.data?.error || err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -194,7 +252,7 @@ const CandidateForm = () => {
             <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-500" />
             <h2 className="text-2xl font-bold text-slate-800">Submission Successful!</h2>
             <p className="text-slate-600">
-              {phase === "1"
+              {globalPhase === 1
                 ? "Your project description has been received. Check your email for confirmation."
                 : "Your final project has been received and is under review."}
             </p>
@@ -263,7 +321,7 @@ const CandidateForm = () => {
             <div className="flex justify-between items-start">
               <div>
                 <CardTitle className="text-2xl font-bold flex items-center gap-3">
-                  <Upload className="h-6 w-6" /> Project Submission Portal
+                  <Upload className="h-6 w-6" /> {globalPhase === 1 ? "Phase 1 Submission Portal" : "Phase 2 Submission Portal"}
                 </CardTitle>
                 <CardDescription className="text-indigo-100">
                   Authenticated Access: Proceed with uploading your project documentation and files.
@@ -283,7 +341,6 @@ const CandidateForm = () => {
           <form onSubmit={handleSubmit}>
             <CardContent className="p-8 space-y-8">
               {/* Individual vs Team Selection */}
-              {/* Selection is now locked/read-only info */}
               {!showCodePopup && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
@@ -334,10 +391,10 @@ const CandidateForm = () => {
                 </div>
               )}
 
-              {/* Phase Switch Logic Hidden - only file sections show if authenticated */}
+
 
               {/* Phase 1 Fields */}
-              {(phase === "1" || formData.registrationId) && (
+              {globalPhase === 1 && (
                 <div className="space-y-6 border-t pt-8 border-slate-100">
                   <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <div className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">1</div>
@@ -377,7 +434,7 @@ const CandidateForm = () => {
               )}
 
               {/* Phase 2 Fields */}
-              {(phase === "2" || formData.registrationId) && (
+              {(globalPhase === 2 && formData.registrationId) && (
                 <div className="space-y-6 border-t pt-8 border-slate-100">
                   <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <div className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">2</div>
@@ -427,7 +484,7 @@ const CandidateForm = () => {
               )}
 
               <Button type="submit" className="w-full h-14 text-lg font-bold rounded-2xl shadow-xl shadow-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-all hover:-translate-y-1 active:scale-95" disabled={loading}>
-                {loading ? "Processing Submission..." : phase === "1" ? "Submit Project Description" : "Complete Final Submission"}
+                {loading ? "Processing Submission..." : globalPhase === 1 ? "Submit Project Description" : "Complete Final Submission"}
               </Button>
             </CardContent>
           </form>

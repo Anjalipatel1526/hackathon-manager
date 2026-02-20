@@ -12,6 +12,7 @@ import Dashboard from "@/pages/Dashboard";
 import Candidates from "@/pages/Candidates";
 import DashboardSettings from "@/pages/DashboardSettings";
 import NotFound from "@/pages/NotFound";
+import { GlobalDataProvider } from "@/contexts/DataContext";
 
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
@@ -47,43 +48,30 @@ const App = () => (
               element={<CandidateForm />}
             />
             <Route
-              path="/admin"
+              path="/admin/*"
               element={
                 <ProtectedRoute>
-                  <DashboardLayout><Dashboard /></DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/candidates"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout><Candidates /></DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/admin/pending"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout><Candidates filterStatus="Pending" /></DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/approved"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout><Candidates filterStatus="Approved" /></DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/settings"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout><DashboardSettings /></DashboardLayout>
+                  <GlobalDataProvider>
+                    <Routes>
+                      <Route index element={<DashboardLayout><Dashboard /></DashboardLayout>} />
+                      <Route
+                        path="candidates"
+                        element={<DashboardLayout><Candidates /></DashboardLayout>}
+                      />
+                      <Route
+                        path="pending"
+                        element={<DashboardLayout><Candidates filterStatus="Pending" /></DashboardLayout>}
+                      />
+                      <Route
+                        path="approved"
+                        element={<DashboardLayout><Candidates filterStatus="Approved" /></DashboardLayout>}
+                      />
+                      <Route
+                        path="settings"
+                        element={<DashboardLayout><DashboardSettings /></DashboardLayout>}
+                      />
+                    </Routes>
+                  </GlobalDataProvider>
                 </ProtectedRoute>
               }
             />

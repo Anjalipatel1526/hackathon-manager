@@ -44,6 +44,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
+import { useGlobalData } from "@/contexts/DataContext";
 
 const TRACKS = [
   "Education",
@@ -82,12 +83,14 @@ interface Candidate {
 
   phase1?: {
     projectDescription: string;
+    descriptionUrl?: string; // New field
     pptUrl?: string;
     submittedAt: string;
   };
 
   phase2?: {
     githubRepoLink: string;
+    githubUrl?: string; // New field
     readmeUrl?: string;
     finalProjectZipUrl?: string;
     submittedAt: string;
@@ -106,32 +109,15 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const [cachedCandidates, setCachedCandidates] = useState<Candidate[]>(() => {
-    const saved = localStorage.getItem("codekar_candidates_cache");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const { data: candidates = cachedCandidates, isPending, isFetching, refetch } = useQuery({
-    queryKey: ["applications"],
-    queryFn: async () => {
-      const data = await candidateApi.getAllApplications();
-      localStorage.setItem("codekar_candidates_cache", JSON.stringify(data));
-      setCachedCandidates(data);
-      return data;
-    },
-    staleTime: 5 * 60 * 1000,
-    initialData: cachedCandidates.length > 0 ? cachedCandidates : undefined,
-  });
+  const { candidates, isPending, isFetching, refetch, updateLocalCache } = useGlobalData();
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string, status: string }) => candidateApi.updateStatus(id, status),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
-      // Update local cache immediately too
+      // Update global cache immediately
       const updatedCandidates = candidates.map(c => c._id === data._id ? { ...c, status: data.status } : c);
-      localStorage.setItem("codekar_candidates_cache", JSON.stringify(updatedCandidates));
-      setCachedCandidates(updatedCandidates);
+      updateLocalCache(updatedCandidates);
       toast({ title: "Success", description: "Status updated successfully." });
     },
     onError: (err: any) => {
@@ -223,7 +209,7 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(isPending && candidates.length === 0) ? (
+              {isPending ? (
                 <TableSkeleton />
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-12">No applications found.</TableCell></TableRow>
@@ -344,18 +330,34 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
                     <h3 className="text-lg font-bold text-slate-800 border-l-4 border-indigo-500 pl-3">Phase 1: Project Idea</h3>
                     <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm">
                       <p className="text-sm text-slate-600 mb-4 whitespace-pre-wrap">{selectedCandidate.phase1?.projectDescription}</p>
-                      {selectedCandidate.phase1?.pptUrl && (
-                        <a
-                          href={selectedCandidate.phase1.pptUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl text-indigo-700 hover:bg-indigo-100 transition-colors"
-                        >
-                          <FileText className="h-5 w-5" />
-                          <span className="text-sm font-bold">Open Project PPT (Drive)</span>
-                          <ExternalLink className="h-4 w-4 ml-auto" />
-                        </a>
-                      )}
+
+                      <div className="flex gap-3 flex-wrap">
+                        {selectedCandidate.phase1?.descriptionUrl && (
+                          <a
+                            href={selectedCandidate.phase1.descriptionUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl text-indigo-700 hover:bg-indigo-100 transition-colors flex-1"
+                          >
+                            <FileText className="h-5 w-5" />
+                            <span className="text-sm font-bold">Open Description (Drive)</span>
+                            <ExternalLink className="h-4 w-4 ml-auto" />
+                          </a>
+                        )}
+
+                        {selectedCandidate.phase1?.pptUrl && (
+                          <a
+                            href={selectedCandidate.phase1.pptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl text-indigo-700 hover:bg-indigo-100 transition-colors flex-1"
+                          >
+                            <FileText className="h-5 w-5" />
+                            <span className="text-sm font-bold">Open Project PPT (Drive)</span>
+                            <ExternalLink className="h-4 w-4 ml-auto" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -377,7 +379,19 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
                           <ExternalLink className="h-4 w-4" />
                         </a>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                          {selectedCandidate.phase2.githubUrl && (
+                            <a
+                              href={selectedCandidate.phase2.githubUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 transition-colors"
+                            >
+                              <FileText className="h-4 w-4 text-indigo-600" />
+                              <span className="text-xs font-semibold">GitHub .txt</span>
+                              <ExternalLink className="h-3 w-3 ml-auto text-slate-400" />
+                            </a>
+                          )}
                           {selectedCandidate.phase2.readmeUrl && (
                             <a
                               href={selectedCandidate.phase2.readmeUrl}

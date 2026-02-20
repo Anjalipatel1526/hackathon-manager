@@ -13,20 +13,33 @@ const upload = multer({ dest: 'uploads/' });
 const generateRegId = () => `REG-${Math.floor(100000 + Math.random() * 900000)}`;
 
 /**
- * PHASE 1 Submission
+ * PHASE 1 Submission (Update Existing)
  */
 router.post('/phase1', upload.single('ppt'), async (req, res) => {
     try {
-        const { registrationType, department, email, teamLeaderEmail, ...otherData } = req.body;
+        const { registrationId, projectDescription } = req.body;
         const file = req.file;
 
-        const identifier = registrationType === 'Individual' ? otherData.firstName + ' ' + otherData.lastName : otherData.teamName;
-        const targetEmail = registrationType === 'Individual' ? email : teamLeaderEmail;
+        const candidate = await Candidate.findOne({ registrationId });
+        if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
+
+        const identifier = candidate.registrationType === 'Individual' ? candidate.firstName + ' ' + candidate.lastName : candidate.teamName;
+        const targetEmail = candidate.registrationType === 'Individual' ? candidate.email : candidate.teamLeaderEmail;
 
         // 1. Setup Drive folder
-        const folderId = await driveService.getOrCreateTargetFolder(1, registrationType, identifier);
+        const folderId = await driveService.getOrCreateTargetFolder(candidate.registrationType, identifier);
 
-        // 2. Upload PPT if exists
+        // 2. Upload description as file if exists
+        let descriptionData = {};
+        if (projectDescription) {
+            const uploadResult = await driveService.uploadTextAsFile(projectDescription, "project_description.txt", folderId);
+            descriptionData = {
+                descriptionUrl: uploadResult.link,
+                descriptionDriveId: uploadResult.id,
+            };
+        }
+
+        // 3. Upload PPT if exists
         let pptData = {};
         if (file) {
             const uploadResult = await driveService.uploadFile(file.path, file.originalname, folderId);
@@ -38,27 +51,20 @@ router.post('/phase1', upload.single('ppt'), async (req, res) => {
             fs.unlinkSync(file.path);
         }
 
-        // 3. Save to DB
-        const candidate = new Candidate({
-            registrationType,
-            department,
-            registrationId: generateRegId(),
-            email: registrationType === 'Individual' ? email : undefined,
-            teamLeaderEmail: registrationType === 'Team' ? teamLeaderEmail : undefined,
-            ...otherData,
-            phase1: {
-                projectDescription: otherData.projectDescription,
-                ...pptData,
-                submittedAt: new Date(),
-            }
-        });
+        // 4. Update DB
+        candidate.phase1 = {
+            projectDescription,
+            ...descriptionData,
+            ...pptData,
+            submittedAt: new Date(),
+        };
 
         await candidate.save();
 
         // 4. Send Email
-        await emailService.sendPhase1Email(targetEmail, identifier, registrationType === 'Team');
+        await emailService.sendPhase1Email(targetEmail, identifier, candidate.registrationId, candidate.registrationType === 'Team');
 
-        res.status(201).json({ message: 'Phase 1 submission successful', registrationId: candidate.registrationId });
+        res.status(200).json({ message: 'Phase 1 submission successful', registrationId: candidate.registrationId });
     } catch (err) {
         console.error('Phase 1 Error:', err);
         res.status(500).json({ error: err.message });
@@ -82,10 +88,20 @@ router.post('/phase2', upload.fields([
         const identifier = candidate.registrationType === 'Individual' ? candidate.firstName + ' ' + candidate.lastName : candidate.teamName;
         const targetEmail = candidate.registrationType === 'Individual' ? candidate.email : candidate.teamLeaderEmail;
 
-        // 1. Setup Drive folder (Phase 2)
-        const folderId = await driveService.getOrCreateTargetFolder(2, candidate.registrationType, identifier);
+        // 1. Setup Drive folder (use same logic)
+        const folderId = await driveService.getOrCreateTargetFolder(candidate.registrationType, identifier);
 
-        // 2. Upload Files
+        // 2. Upload GitHub Link as file if exists
+        let githubData = {};
+        if (githubRepoLink) {
+            const uploadResult = await driveService.uploadTextAsFile(githubRepoLink, "github_link.txt", folderId);
+            githubData = {
+                githubUrl: uploadResult.link,
+                githubDriveId: uploadResult.id,
+            };
+        }
+
+        // 3. Upload Files
         let readmeData = {};
         if (files.readme) {
             const readmeFile = files.readme[0];
@@ -108,9 +124,10 @@ router.post('/phase2', upload.fields([
             fs.unlinkSync(zipFile.path);
         }
 
-        // 3. Update DB
+        // 4. Update DB
         candidate.phase2 = {
             githubRepoLink,
+            ...githubData,
             ...readmeData,
             ...zipData,
             submittedAt: new Date(),
@@ -136,6 +153,21 @@ router.get('/applications', async (req, res) => {
     try {
         const apps = await Candidate.find().sort({ createdAt: -1 });
         res.json(apps);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * Get Application by Registration ID
+ */
+router.get('/applications/:regId', async (req, res) => {
+    try {
+        const candidate = await Candidate.findOne({ registrationId: req.params.regId });
+        if (!candidate) {
+            return res.status(404).json({ error: 'Candidate not found' });
+        }
+        res.json(candidate);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -1,11 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Clock, CheckCircle, Building2, TrendingUp, BarChart3, PieChart as PieChartIcon, User, Layers } from "lucide-react";
+import { Users, Clock, CheckCircle, Building2, TrendingUp, BarChart3, PieChart as PieChartIcon, User, Layers, ArrowRight } from "lucide-react";
 import { candidateApi } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { useGlobalData } from "@/contexts/DataContext";
+import { Button } from "@/components/ui/button";
+import { RotateCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
     BarChart,
     Bar,
@@ -32,26 +36,41 @@ const TRACKS = [
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"];
 
 const Dashboard = () => {
-    const [cachedCandidates, setCachedCandidates] = useState<any[]>(() => {
-        try {
-            const saved = localStorage.getItem("codekar_candidates_cache");
-            return saved ? JSON.parse(saved) : [];
-        } catch (e) {
-            return [];
-        }
-    });
+    const { candidates, isPending, isFetching, refetch } = useGlobalData();
+    const { toast } = useToast();
+    const [currentPhase, setCurrentPhase] = useState<number>(1);
+    const [isUpdatingPhase, setIsUpdatingPhase] = useState(false);
 
-    const { data: candidates = cachedCandidates, isPending, isFetching } = useQuery({
-        queryKey: ["applications"],
-        queryFn: async () => {
-            const data = await candidateApi.getAllApplications();
-            localStorage.setItem("codekar_candidates_cache", JSON.stringify(data));
-            setCachedCandidates(data);
-            return data;
-        },
-        staleTime: 5 * 60 * 1000,
-        initialData: cachedCandidates.length > 0 ? cachedCandidates : undefined,
-    });
+    useEffect(() => {
+        const fetchPhase = async () => {
+            try {
+                const phase = await candidateApi.getPhase();
+                setCurrentPhase(phase);
+            } catch (error) {
+                console.error("Failed to fetch current phase", error);
+            }
+        };
+        fetchPhase();
+    }, []);
+
+    const handleTogglePhase = async () => {
+        if (!window.confirm(`Are you sure you want to change the active registration phase to Phase ${currentPhase === 1 ? 2 : 1}?`)) return;
+
+        setIsUpdatingPhase(true);
+        try {
+            const nextPhase = currentPhase === 1 ? 2 : 1;
+            await candidateApi.updatePhase(nextPhase);
+            setCurrentPhase(nextPhase);
+            toast({
+                title: `Phase ${nextPhase} Activated`,
+                description: nextPhase === 2 ? "All Phase 1 candidates have been notified." : "Registration reverted to Phase 1 allowed."
+            });
+        } catch (error) {
+            toast({ title: "Failed to update phase", variant: "destructive", description: "An error occurred." });
+        } finally {
+            setIsUpdatingPhase(false);
+        }
+    };
 
     const displayData = candidates;
 
@@ -82,8 +101,8 @@ const Dashboard = () => {
         { name: "Phase 1 Only", value: stats.total - stats.p2Completed, color: "#6366f1" },
     ].filter(d => d.value > 0), [stats]);
 
-    // Only show skeletons if we have absolutely no data EVER (even in cache)
-    if (isPending && displayData.length === 0) {
+    // Only show skeletons if we have absolutely no data (first visit ever)
+    if (isPending) {
         return (
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
@@ -104,17 +123,38 @@ const Dashboard = () => {
         <div className="space-y-8 pb-10">
             <div className="flex justify-between items-start">
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Admin Dashboard</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+                        Admin Dashboard
+                        <Badge variant={currentPhase === 1 ? "secondary" : "default"} className="text-sm font-bold ml-2">
+                            Phase {currentPhase} Active
+                        </Badge>
+                    </h1>
                     <p className="text-slate-500 italic flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-emerald-500" /> Codekar Hackathon System Overview • Phase 1 & 2 Analytics
                     </p>
                 </div>
-                {isFetching && (
-                    <div className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full animate-pulse border border-indigo-100">
-                        <Clock className="h-3 w-3 animate-spin" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Refreshing Data...</span>
-                    </div>
-                )}
+                <div className="flex gap-4 items-center">
+                    <Button
+                        onClick={handleTogglePhase}
+                        disabled={isUpdatingPhase}
+                        className={`${currentPhase === 1 ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                    >
+                        {isUpdatingPhase ? "Processing..." : (currentPhase === 1 ? "Start Phase 2 Registration" : "Revert to Phase 1")}
+                        {!isUpdatingPhase && <ArrowRight className="h-4 w-4 ml-2" />}
+                    </Button>
+
+                    {isFetching && (
+                        <div className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full animate-pulse border border-indigo-100">
+                            <Clock className="h-3 w-3 animate-spin" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Refreshing...</span>
+                        </div>
+                    )}
+                    {!isFetching && (
+                        <Button variant="ghost" size="sm" onClick={() => refetch()} className="text-slate-400 hover:text-indigo-600 h-8 w-8 p-0 rounded-full">
+                            <RotateCw className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Stats Grid */}

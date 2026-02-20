@@ -50,6 +50,8 @@ const candidateSchema = new mongoose.Schema({
     // Phase 1 - Project Description
     phase1: {
         projectDescription: String,
+        descriptionUrl: String,
+        descriptionDriveId: String,
         pptUrl: String, // Google Drive Link
         pptDriveId: String,
         submittedAt: Date
@@ -58,6 +60,8 @@ const candidateSchema = new mongoose.Schema({
     // Phase 2 - Final Submission
     phase2: {
         githubRepoLink: String,
+        githubUrl: String,
+        githubDriveId: String,
         readmeUrl: String, // Google Drive Link
         readmeDriveId: String,
         finalProjectZipUrl: String, // Google Drive Link
