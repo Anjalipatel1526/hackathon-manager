@@ -41,6 +41,9 @@ interface Candidate {
   pan?: string;
   passbook?: string;
   remarks?: string;
+  employee_id?: string;
+  employee_email?: string;
+  temp_password?: string;
 }
 
 interface CandidatesPageProps {
@@ -56,6 +59,14 @@ const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => 
   const [remarksData, setRemarksData] = useState<{ email: string, remarksInput: string } | null>(null);
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState<string | null>(null);
   const { toast } = useToast();
+  const { data: remoteDepts = [], isLoading: departmentsLoading } = useQuery({
+    queryKey: ["departments"],
+    queryFn: async () => {
+      const res = await googleSheets.getDepartments();
+      return res.result === "success" ? res.data : DEPARTMENTS;
+    }
+  });
+
   const queryClient = useQueryClient();
 
   const { data: candidates = [], isLoading, refetch } = useQuery({
@@ -78,6 +89,9 @@ const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => 
           pan: app.pan || "",
           passbook: app.passbook || "",
           remarks: app.remarks || "",
+          employee_id: app.employee_id || "",
+          employee_email: app.employee_email || "",
+          temp_password: app.temp_password || "",
         }));
       }
       throw new Error(response.error || "Failed to fetch data");
@@ -196,7 +210,13 @@ const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => 
             <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
-              {DEPARTMENTS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              {departmentsLoading ? (
+                <SelectItem value="loading" disabled>Loading...</SelectItem>
+              ) : (
+                (queryClient.getQueryData<string[]>(["departments"]) || DEPARTMENTS).map((d) => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         )}
@@ -301,6 +321,28 @@ const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => 
                 <label className="text-xs font-bold text-muted-foreground uppercase">Address</label>
                 <p className="text-sm font-medium">{selectedCandidate.address || "N/A"}</p>
               </div>
+
+              {selectedCandidate.status === "Verified" && selectedCandidate.employee_id && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Corporate Identity</label>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground block text-[10px]">ID</span>
+                      <span className="font-bold text-emerald-900">{selectedCandidate.employee_id}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px]">Work Email</span>
+                      <span className="font-bold text-emerald-900 truncate block" title={selectedCandidate.employee_email}>{selectedCandidate.employee_email}</span>
+                    </div>
+                  </div>
+                  {selectedCandidate.temp_password && (
+                    <div className="pt-1 border-t border-emerald-100">
+                      <span className="text-muted-foreground block text-[10px]">Temporary Password</span>
+                      <code className="bg-emerald-100 px-1 rounded font-mono text-emerald-900">{selectedCandidate.temp_password}</code>
+                    </div>
+                  )}
+                </div>
+              )}
               {selectedCandidate.remarks && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <label className="text-[10px] font-black uppercase tracking-widest text-amber-700">Current Remarks</label>

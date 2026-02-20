@@ -11,6 +11,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import Dashboard from "@/pages/Dashboard";
 import Candidates from "@/pages/Candidates";
 import DashboardSettings from "@/pages/DashboardSettings";
+import Departments from "@/pages/Departments";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,14 @@ const App = () => (
               }
             />
             <Route
+              path="/dashboard/departments"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout><Departments /></DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/dashboard/settings"
               element={
                 <ProtectedRoute>
@@ -75,7 +84,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
-  </QueryClientProvider>
+  </QueryClientProvider >
 );
 
 export default App;

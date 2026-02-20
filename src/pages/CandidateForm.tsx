@@ -9,9 +9,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, FileText, Upload, X } from "lucide-react";
 import { googleSheets } from "@/lib/googleSheets";
+import { useQuery } from "@tanstack/react-query";
 
 // Hardcode departments since we removed Supabase
-const DEPARTMENTS = ["HR", "Tech", "Finance", "Marketing", "Operations"];
+const DEFAULT_DEPARTMENTS = ["HR", "Tech", "Finance", "Marketing", "Operations"];
 
 const DOCUMENT_TYPES = [
   { key: "photo", label: "Photo", accept: ".pdf" },
@@ -24,6 +25,14 @@ const DOCUMENT_TYPES = [
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 
 const CandidateForm = () => {
+  const { data: departments = DEFAULT_DEPARTMENTS } = useQuery({
+    queryKey: ["departments"],
+    queryFn: async () => {
+      const res = await googleSheets.getDepartments();
+      return res.result === "success" ? res.data : DEFAULT_DEPARTMENTS;
+    }
+  });
+
   // Always start with empty fields for public access
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -132,7 +141,7 @@ const CandidateForm = () => {
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center">
             <img
-              src="/Gemini_Generated_Image_p5ko5pp5ko5pp5ko.png"
+              src="/un-logo.png"
               alt="Logo"
               className="h-full w-full object-cover rounded-2xl shadow-md border-2 border-primary/20"
             />
@@ -175,7 +184,7 @@ const CandidateForm = () => {
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DEPARTMENTS.map((dept) => (
+                      {departments.map((dept: string) => (
                         <SelectItem key={dept} value={dept}>
                           {dept}
                         </SelectItem>

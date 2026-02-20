@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Users, Clock, CheckCircle, Building2, TrendingUp, BarChart3, PieChart as PieChartIcon } from "lucide-react";
 import { googleSheets } from "@/lib/googleSheets";
@@ -16,10 +17,18 @@ import {
     Pie,
 } from "recharts";
 
-const DEPARTMENTS = ["HR", "Tech", "Finance", "Marketing", "Operations"];
+const DEFAULT_DEPARTMENTS = ["HR", "Tech", "Finance", "Marketing", "Operations"];
 const COLORS = ["#4954FA", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
 
 const Dashboard = () => {
+    const { data: departments = DEFAULT_DEPARTMENTS } = useQuery({
+        queryKey: ["departments"],
+        queryFn: async () => {
+            const res = await googleSheets.getDepartments();
+            return res.result === "success" ? res.data : DEFAULT_DEPARTMENTS;
+        }
+    });
+
     const { data: candidates = [], isLoading } = useQuery({
         queryKey: ["applications"],
         queryFn: async () => {
@@ -43,13 +52,13 @@ const Dashboard = () => {
     const verified = candidates.filter((c) => c.status === "Verified").length;
 
     const statCards = [
-        { label: "Total Talent", value: total, icon: Users, color: "from-blue-500/10 to-blue-500/5", iconColor: "text-blue-600" },
-        { label: "Pending Review", value: pending, icon: Clock, color: "from-amber-500/10 to-amber-500/5", iconColor: "text-amber-600" },
-        { label: "Verified Assets", value: verified, icon: CheckCircle, color: "from-emerald-500/10 to-emerald-500/5", iconColor: "text-emerald-600" },
-        { label: "Active Sectors", value: DEPARTMENTS.length, icon: Building2, color: "from-indigo-500/10 to-indigo-500/5", iconColor: "text-indigo-600" },
+        { label: "Total Talent", value: total, icon: Users, color: "from-blue-500/10 to-blue-500/5", iconColor: "text-blue-600", path: "/dashboard/candidates" },
+        { label: "Pending Review", value: pending, icon: Clock, color: "from-amber-500/10 to-amber-500/5", iconColor: "text-amber-600", path: "/dashboard/pending" },
+        { label: "Verified Assets", value: verified, icon: CheckCircle, color: "from-emerald-500/10 to-emerald-500/5", iconColor: "text-emerald-600", path: "/dashboard/verified" },
+        { label: "Active Sectors", value: departments.length, icon: Building2, color: "from-indigo-500/10 to-indigo-500/5", iconColor: "text-indigo-600", path: "/dashboard/departments" },
     ];
 
-    const deptData = DEPARTMENTS.map((dept) => ({
+    const deptData = departments.map((dept) => ({
         name: dept,
         count: candidates.filter((c: any) => c.department === dept).length,
     }));
@@ -86,17 +95,19 @@ const Dashboard = () => {
             {/* Stats Grid */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {statCards.map((s) => (
-                    <Card key={s.label} className="border-none shadow-sm hover:shadow-md transition-all duration-300">
-                        <CardContent className={`flex items-center gap-4 p-6 ${s.color} rounded-xl border border-white/10`}>
-                            <div className={`rounded-xl bg-white p-3 shadow-sm ${s.iconColor}`}>
-                                <s.icon className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
-                                <p className="text-3xl font-black text-foreground">{s.value}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <Link key={s.label} to={s.path}>
+                        <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 h-full">
+                            <CardContent className={`flex items-center gap-4 p-6 ${s.color} rounded-xl border border-white/10 h-full`}>
+                                <div className={`rounded-xl bg-white p-3 shadow-sm ${s.iconColor}`}>
+                                    <s.icon className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
+                                    <p className="text-3xl font-black text-foreground">{s.value}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
                 ))}
             </div>
 
@@ -195,7 +206,63 @@ const Dashboard = () => {
                 </Card>
             </div>
 
-            {/* Quick Activity Summary */}
+            {/* Pending Applications List */}
+            <Card className="border-none shadow-sm overflow-hidden bg-card/50 backdrop-blur-sm">
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div className="space-y-1">
+                        <CardTitle className="text-xl font-bold">Pending Applications</CardTitle>
+                        <CardDescription>Candidates awaiting your review and verification.</CardDescription>
+                    </div>
+                    <Link to="/dashboard/pending" className="text-xs font-bold text-primary hover:underline">View All</Link>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-muted/10 text-[10px] uppercase tracking-widest font-black text-muted-foreground border-y border-border/50">
+                                <tr>
+                                    <th className="px-6 py-3">Full Name</th>
+                                    <th className="px-6 py-3">Department</th>
+                                    <th className="px-6 py-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/50">
+                                {candidates.filter(c => c.status === "Pending").slice(0, 5).length > 0 ? (
+                                    candidates.filter(c => c.status === "Pending").slice(0, 5).map((c) => (
+                                        <tr key={c.id} className="hover:bg-muted/5 transition-colors group">
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-foreground">{c.full_name}</span>
+                                                    <span className="text-xs text-muted-foreground">{c.email}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-[10px] font-bold text-primary uppercase">
+                                                    {c.department}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <Link to="/dashboard/pending">
+                                                    <button className="text-xs font-bold bg-primary text-white px-3 py-1 rounded-lg hover:bg-primary/90 transition-all opacity-0 group-hover:opacity-100">
+                                                        Review
+                                                    </button>
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={3} className="px-6 py-10 text-center text-sm text-muted-foreground italic">
+                                            No pending applications found.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Operational Context */}
             <Card className="border-none shadow-sm overflow-hidden bg-card/50 backdrop-blur-sm">
                 <CardHeader className="border-b border-border/50 bg-muted/20">
                     <CardTitle className="text-xl font-bold">Operational Context</CardTitle>

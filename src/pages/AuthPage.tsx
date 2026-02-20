@@ -51,7 +51,7 @@ const AuthPage = () => {
                 <CardHeader className="text-center space-y-2">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center">
                         <img
-                            src="/Gemini_Generated_Image_p5ko5pp5ko5pp5ko.png"
+                            src="/un-logo.png"
                             alt="Logo"
                             className="h-full w-full object-cover rounded-xl shadow-md"
                         />

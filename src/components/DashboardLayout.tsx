@@ -12,7 +12,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, Clock, CheckCircle, Settings, LogOut, FileText } from "lucide-react";
+import { LayoutDashboard, Users, Clock, CheckCircle, Settings, LogOut, FileText, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
@@ -20,6 +20,7 @@ const navItems = [
   { title: "All Candidates", url: "/dashboard/candidates", icon: Users },
   { title: "Pending", url: "/dashboard/pending", icon: Clock },
   { title: "Verified", url: "/dashboard/verified", icon: CheckCircle },
+  { title: "Manage Departments", url: "/dashboard/departments", icon: Building2 },
   { title: "Settings", url: "/dashboard/settings", icon: Settings },
 ];
 
@@ -33,7 +34,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           <SidebarContent>
             <div className="flex items-center gap-3 p-4">
               <img
-                src="/Gemini_Generated_Image_p5ko5pp5ko5pp5ko.png"
+                src="/un-logo.png"
                 alt="Logo"
                 className="h-9 w-9 rounded-lg object-cover shadow-sm"
               />

@@ -11,7 +11,7 @@ export interface CandidateData {
 }
 
 // User provided URL
-export const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbxYQ1pirWB9V8ZJobjm-oow9gsKPdwckIZ_NL7rwdFGbGmAbIwi98sfy-4JhRor4qCEug/exec";
+export const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbyL_ipJj1yDoSNJxPRDYxelt14Prwd8sCymtYrckg0YjtkZcLQThtwV0DBi2u3VPm2ESA/exec";
 
 export const googleSheets = {
 
@@ -44,6 +44,25 @@ export const googleSheets = {
             action: "verify_candidate",
             data: { email }
         }, false); // Allow reading response to see script errors
+    },
+
+    /**
+     * Fetches all departments
+     */
+    async getDepartments() {
+        return this.sendRequest({
+            action: "get_departments"
+        }, false, true); // Use GET for retrieval
+    },
+
+    /**
+     * Adds a new department
+     */
+    async addDepartment(name: string) {
+        return this.sendRequest({
+            action: "add_department",
+            data: { name }
+        }, false);
     },
 
     /**
