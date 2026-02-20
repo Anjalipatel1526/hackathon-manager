@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Eye, Search, Trash2, CheckCircle, FileText, Image as ImageIcon, ExternalLink } from "lucide-react";
+import { Download, Eye, Search, Trash2, CheckCircle, FileText, Image as ImageIcon, ExternalLink, Github, FolderOpen, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -19,157 +19,101 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { googleSheets } from "@/lib/googleSheets";
+import { candidateApi } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const DEPARTMENTS = ["HR", "Tech", "Finance", "Marketing", "Operations"];
+const DEPARTMENTS = [
+  "Education",
+  "Entertainment",
+  "AI Agent and Automation",
+  "Core AI/ML",
+  "Big Data",
+  "Mass Communication",
+  "Cutting Agents"
+];
+
+interface TeamMember {
+  name: string;
+  email: string;
+}
 
 interface Candidate {
-  id: string;
-  full_name: string;
-  email: string;
-  phone: string;
+  _id: string;
+  registrationId: string;
+  registrationType: 'Individual' | 'Team';
   department: string;
-  status: string;
-  address: string;
-  candidate_type: string;
-  photo?: string;
-  resume?: string;
-  aadhaar?: string;
-  pan?: string;
-  passbook?: string;
-  remarks?: string;
-  employee_id?: string;
-  employee_email?: string;
-  temp_password?: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+
+  // Individual
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  collegeCompany?: string;
+
+  // Team
+  teamName?: string;
+  teamLeaderName?: string;
+  teamLeaderEmail?: string;
+  teamMembers?: TeamMember[];
+
+  phase1?: {
+    projectDescription: string;
+    pptUrl?: string;
+    submittedAt: string;
+  };
+
+  phase2?: {
+    githubRepoLink: string;
+    readmeUrl?: string;
+    finalProjectZipUrl?: string;
+    submittedAt: string;
+    isCompleted: boolean;
+  };
 }
 
 interface CandidatesPageProps {
-  filterStatus?: "Pending" | "Verified";
+  filterStatus?: "Pending" | "Approved" | "Rejected";
   filterDepartment?: string;
 }
-
 
 const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => {
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>(filterDepartment || "all");
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
-  const [remarksData, setRemarksData] = useState<{ email: string, remarksInput: string } | null>(null);
-  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState<string | null>(null);
   const { toast } = useToast();
-  const { data: remoteDepts = [], isLoading: departmentsLoading } = useQuery({
-    queryKey: ["departments"],
-    queryFn: async () => {
-      const res = await googleSheets.getDepartments();
-      return res.result === "success" ? res.data : DEPARTMENTS;
-    }
-  });
-
   const queryClient = useQueryClient();
 
   const { data: candidates = [], isLoading, refetch } = useQuery({
     queryKey: ["applications"],
     queryFn: async () => {
-      const response = await googleSheets.getApplications();
-      if (response.result === "success") {
-        return (response.data || []).map((app: any) => ({
-          id: app.timestamp || Math.random().toString(),
-          full_name: app.fullname || "Unknown",
-          email: app.email || "",
-          phone: app.phone || "",
-          department: app.department || "Unassigned",
-          candidate_type: app.candidatetype || "Full Time",
-          status: app.status || "Pending",
-          address: app.address || "",
-          photo: app.photo || "",
-          resume: app.resume || "",
-          aadhaar: app.aadhaar || "",
-          pan: app.pan || "",
-          passbook: app.passbook || "",
-          remarks: app.remarks || "",
-          employee_id: app.employee_id || "",
-          employee_email: app.employee_email || "",
-          temp_password: app.temp_password || "",
-        }));
-      }
-      throw new Error(response.error || "Failed to fetch data");
+      return await candidateApi.getAllApplications();
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1 * 60 * 1000,
   });
 
-  const verifyMutation = useMutation({
-    mutationFn: (email: string) => googleSheets.verifyCandidate(email),
-    onMutate: async (email) => {
-      await queryClient.cancelQueries({ queryKey: ["applications"] });
-      const previousCandidates = queryClient.getQueryData<Candidate[]>(["applications"]);
-      queryClient.setQueryData<Candidate[]>(["applications"], (old) =>
-        old?.map((c) => (c.email === email ? { ...c, status: "Verified" } : c))
-      );
-      return { previousCandidates };
-    },
-    onError: (err, email, context) => {
-      queryClient.setQueryData(["applications"], context?.previousCandidates);
-      toast({ title: "Verification failed", description: err.message, variant: "destructive" });
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["applications"] });
-    },
-    onSuccess: () => {
-      toast({ title: "Success", description: "Candidate status updated to Verified." });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (email: string) => googleSheets.deleteCandidate(email),
-    onMutate: async (email) => {
-      await queryClient.cancelQueries({ queryKey: ["applications"] });
-      const previousCandidates = queryClient.getQueryData<Candidate[]>(["applications"]);
-      queryClient.setQueryData<Candidate[]>(["applications"], (old) =>
-        old?.filter((c) => c.email !== email)
-      );
-      return { previousCandidates };
-    },
-    onError: (err, email, context) => {
-      queryClient.setQueryData(["applications"], context?.previousCandidates);
-      toast({ title: "Deletion failed", description: err.message, variant: "destructive" });
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["applications"] });
-    },
-    onSuccess: () => {
-      toast({ title: "Deleted", description: "Candidate application removed." });
-    },
-  });
-
-  const remarksMutation = useMutation({
-    mutationFn: ({ email, remarks }: { email: string, remarks: string }) => googleSheets.addRemarks(email, remarks),
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string, status: string }) => candidateApi.updateStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
-      toast({ title: "Remarks Sent", description: "The candidate has been notified via email." });
-      setRemarksData(null);
+      toast({ title: "Success", description: "Status updated successfully." });
     },
     onError: (err: any) => {
-      toast({ title: "Failed to send remarks", description: err.message, variant: "destructive" });
-    },
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    }
   });
 
-  const filtered = candidates.filter((c) => {
-    const matchesSearch = c.full_name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase());
+  const filtered = candidates.filter((c: Candidate) => {
+    const name = c.registrationType === 'Individual' ? `${c.firstName} ${c.lastName}` : c.teamName || '';
+    const email = (c.registrationType === 'Individual' ? c.email : c.teamLeaderEmail) || '';
+
+    const matchesSearch = name.toLowerCase().includes(search.toLowerCase()) || email.toLowerCase().includes(search.toLowerCase()) || c.registrationId.toLowerCase().includes(search.toLowerCase());
     const matchesDept = deptFilter === "all" || c.department === deptFilter;
     const matchesStatus = !filterStatus || c.status === filterStatus;
     return matchesSearch && matchesDept && matchesStatus;
   });
-
-  const handleVerify = (email: string) => verifyMutation.mutate(email);
-  const handleDelete = (email: string) => deleteMutation.mutate(email);
-
-  const exportCSV = () => {
-    toast({ title: "Not Available", description: "Export from Google Sheets directly.", variant: "default" });
-  };
-
-  const title = filterStatus ? `${filterStatus} Candidates` : filterDepartment ? `${filterDepartment} Department` : "All Candidates";
 
   const TableSkeleton = () => (
     <>
@@ -187,96 +131,116 @@ const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => 
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+            {filterStatus ? `${filterStatus} Submissions` : "All Applications"}
+          </h1>
+          <p className="text-slate-500">Manage candidate registrations and project submissions</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading} className="bg-white">
             <Search className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <Download className="mr-2 h-4 w-4" /> Export CSV
+          <Button variant="outline" size="sm" className="bg-white">
+            <Download className="mr-2 h-4 w-4" /> Export
           </Button>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search by name or email..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      <div className="flex flex-wrap gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="relative flex-1 min-w-[300px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Search by name, email or ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-11 rounded-lg border-slate-200"
+          />
         </div>
-        {!filterDepartment && (
-          <Select value={deptFilter} onValueChange={setDeptFilter}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Departments</SelectItem>
-              {departmentsLoading ? (
-                <SelectItem value="loading" disabled>Loading...</SelectItem>
-              ) : (
-                (queryClient.getQueryData<string[]>(["departments"]) || DEPARTMENTS).map((d) => (
-                  <SelectItem key={d} value={d}>{d}</SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-        )}
+        <Select value={deptFilter} onValueChange={setDeptFilter}>
+          <SelectTrigger className="w-[200px] h-11 rounded-lg border-slate-200"><SelectValue placeholder="Department" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Departments</SelectItem>
+            {DEPARTMENTS.map((d) => (
+              <SelectItem key={d} value={d}>{d}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      <Card className="shadow-sm">
+      <Card className="border-slate-200 shadow-sm overflow-hidden rounded-xl">
         <CardContent className="p-0">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead className="hidden md:table-cell">Phone</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="font-semibold text-slate-700">ID & Name</TableHead>
+                <TableHead className="font-semibold text-slate-700">Type</TableHead>
+                <TableHead className="font-semibold text-slate-700">Department</TableHead>
+                <TableHead className="font-semibold text-slate-700">Phase Status</TableHead>
+                <TableHead className="font-semibold text-slate-700">Status</TableHead>
+                <TableHead className="text-right font-semibold text-slate-700">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && candidates.length === 0 ? (
+              {isLoading ? (
                 <TableSkeleton />
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  {isLoading ? "Loading data from Google Sheets..." : "No candidates found. If you just submitted, try refreshing in a moment."}
-                </TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-12">No applications found.</TableCell></TableRow>
               ) : (
-                filtered.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.full_name}</TableCell>
-                    <TableCell>{c.email}</TableCell>
-                    <TableCell className="hidden md:table-cell">{c.phone}</TableCell>
-                    <TableCell><span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{c.department}</span></TableCell>
+                filtered.map((c: Candidate) => (
+                  <TableRow key={c._id} className="hover:bg-slate-50/50 transition-colors">
                     <TableCell>
-                      <Badge variant="outline" className={c.candidate_type === "Intern" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-blue-200 bg-blue-50 text-blue-700"}>
-                        {c.candidate_type}
+                      <div className="flex flex-col">
+                        <span className="font-mono text-[10px] text-indigo-600 font-bold">{c.registrationId}</span>
+                        <span className="font-semibold text-slate-900">
+                          {c.registrationType === 'Individual' ? `${c.firstName} ${c.lastName}` : c.teamName}
+                        </span>
+                        <span className="text-xs text-slate-500">{c.registrationType === 'Individual' ? c.email : c.teamLeaderEmail}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={c.registrationType === 'Team' ? "bg-indigo-50 border-indigo-100 text-indigo-700" : "bg-slate-50 border-slate-200 text-slate-700"}>
+                        {c.registrationType === 'Team' ? <Users className="h-3 w-3 mr-1" /> : <User className="h-3 w-3 mr-1" />}
+                        {c.registrationType}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${c.status === "Verified" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                        {c.status}
-                      </span>
+                      <span className="text-sm font-medium text-slate-600 truncate max-w-[150px] inline-block">{c.department}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[10px]">P1 ✓</Badge>
+                        {c.phase2?.isCompleted ? (
+                          <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[10px]">P2 ✓</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-slate-100 text-slate-400 border-slate-200 text-[10px]">P2 -</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        defaultValue={c.status}
+                        onValueChange={(v) => statusMutation.mutate({ id: c._id, status: v })}
+                      >
+                        <SelectTrigger className={`h-8 w-28 text-xs font-bold rounded-full border-none px-3 ${c.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
+                            c.status === 'Rejected' ? 'bg-rose-100 text-rose-700' :
+                              'bg-amber-100 text-amber-700'
+                          }`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pending">Pending</SelectItem>
+                          <SelectItem value="Approved">Approved</SelectItem>
+                          <SelectItem value="Rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => setSelectedCandidate(c)} title="View Details">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {c.status !== "Verified" && (
-                          <Button variant="ghost" size="icon" onClick={() => handleVerify(c.email)} className="text-green-600 hover:text-green-700 hover:bg-green-50" title="Verify Document">
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="icon" onClick={() => setRemarksData({ email: c.email, remarksInput: c.remarks || "" })} title="Add/Edit Remarks" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50">
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmEmail(c.email)} className="text-destructive hover:text-destructive/80" title="Delete Application">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => setSelectedCandidate(c)} className="hover:bg-indigo-50 text-indigo-600">
+                        <Eye className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -287,172 +251,135 @@ const Candidates = ({ filterStatus, filterDepartment }: CandidatesPageProps) => 
       </Card>
 
       <Dialog open={!!selectedCandidate} onOpenChange={(open) => !open && setSelectedCandidate(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Candidate Details</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 border-none rounded-3xl">
           {selectedCandidate && (
-            <div className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase">Full Name</label>
-                  <p className="text-sm font-medium">{selectedCandidate.full_name}</p>
+            <>
+              <DialogHeader className="p-8 bg-indigo-600 text-white rounded-t-3xl">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <Badge className="mb-2 bg-indigo-500 text-white border-indigo-400">{selectedCandidate.registrationId}</Badge>
+                    <DialogTitle className="text-2xl font-bold">
+                      {selectedCandidate.registrationType === 'Individual' ? `${selectedCandidate.firstName} ${selectedCandidate.lastName}` : selectedCandidate.teamName}
+                    </DialogTitle>
+                    <p className="text-indigo-100 text-sm">{selectedCandidate.department}</p>
+                  </div>
+                  <Badge className={selectedCandidate.status === 'Approved' ? 'bg-emerald-500' : selectedCandidate.status === 'Rejected' ? 'bg-rose-500' : 'bg-amber-500'}>
+                    {selectedCandidate.status}
+                  </Badge>
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase">Department</label>
-                  <p className="text-sm font-medium">{selectedCandidate.department}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase">Candidate Type</label>
-                  <p className="text-sm font-medium">{selectedCandidate.candidate_type}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase">Phone</label>
-                  <p className="text-sm font-medium">{selectedCandidate.phone || "N/A"}</p>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-muted-foreground uppercase">Email</label>
-                <p className="text-sm font-medium">{selectedCandidate.email}</p>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-muted-foreground uppercase">Address</label>
-                <p className="text-sm font-medium">{selectedCandidate.address || "N/A"}</p>
-              </div>
+              </DialogHeader>
 
-              {selectedCandidate.status === "Verified" && selectedCandidate.employee_id && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Corporate Identity</label>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground block text-[10px]">ID</span>
-                      <span className="font-bold text-emerald-900">{selectedCandidate.employee_id}</span>
+              <ScrollArea className="flex-1 p-8 bg-slate-50">
+                <div className="space-y-8 pb-4">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type</label>
+                      <p className="font-semibold text-slate-700 flex items-center gap-2">
+                        {selectedCandidate.registrationType === 'Team' ? <Users className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                        {selectedCandidate.registrationType}
+                      </p>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground block text-[10px]">Work Email</span>
-                      <span className="font-bold text-emerald-900 truncate block" title={selectedCandidate.employee_email}>{selectedCandidate.employee_email}</span>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contact</label>
+                      <p className="font-semibold text-slate-700 truncate">
+                        {selectedCandidate.registrationType === 'Individual' ? selectedCandidate.email : selectedCandidate.teamLeaderEmail}
+                      </p>
                     </div>
                   </div>
-                  {selectedCandidate.temp_password && (
-                    <div className="pt-1 border-t border-emerald-100">
-                      <span className="text-muted-foreground block text-[10px]">Temporary Password</span>
-                      <code className="bg-emerald-100 px-1 rounded font-mono text-emerald-900">{selectedCandidate.temp_password}</code>
+
+                  {selectedCandidate.registrationType === 'Team' && (
+                    <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-3">Team Members</label>
+                      <div className="space-y-2">
+                        {selectedCandidate.teamMembers?.map((m, i) => (
+                          <div key={i} className="flex justify-between text-sm">
+                            <span className="font-medium text-slate-700">{m.name}</span>
+                            <span className="text-slate-500">{m.email}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-bold text-slate-800 border-l-4 border-indigo-500 pl-3">Phase 1: Project Idea</h3>
+                    <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-sm text-slate-600 mb-4 whitespace-pre-wrap">{selectedCandidate.phase1?.projectDescription}</p>
+                      {selectedCandidate.phase1?.pptUrl && (
+                        <a
+                          href={selectedCandidate.phase1.pptUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl text-indigo-700 hover:bg-indigo-100 transition-colors"
+                        >
+                          <FileText className="h-5 w-5" />
+                          <span className="text-sm font-bold">Open Project PPT (Drive)</span>
+                          <ExternalLink className="h-4 w-4 ml-auto" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {selectedCandidate.phase2?.isCompleted ? (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-bold text-slate-800 border-l-4 border-indigo-500 pl-3">Phase 2: Final Submission</h3>
+                      <div className="space-y-3">
+                        <a
+                          href={selectedCandidate.phase2.githubRepoLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 p-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-colors"
+                        >
+                          <Github className="h-6 w-6" />
+                          <div className="flex-1">
+                            <p className="text-xs text-slate-400">GitHub Repository</p>
+                            <p className="text-sm font-semibold truncate">{selectedCandidate.phase2.githubRepoLink}</p>
+                          </div>
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          {selectedCandidate.phase2.readmeUrl && (
+                            <a
+                              href={selectedCandidate.phase2.readmeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 transition-colors"
+                            >
+                              <FileText className="h-4 w-4 text-indigo-600" />
+                              <span className="text-xs font-semibold">README</span>
+                              <ExternalLink className="h-3 w-3 ml-auto text-slate-400" />
+                            </a>
+                          )}
+                          {selectedCandidate.phase2.finalProjectZipUrl && (
+                            <a
+                              href={selectedCandidate.phase2.finalProjectZipUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 transition-colors"
+                            >
+                              <FolderOpen className="h-4 w-4 text-indigo-600" />
+                              <span className="text-xs font-semibold">Final Source</span>
+                              <ExternalLink className="h-3 w-3 ml-auto text-slate-400" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200">
+                      <p className="text-slate-400 text-sm font-medium">Phase 2 submission pending...</p>
                     </div>
                   )}
                 </div>
-              )}
-              {selectedCandidate.remarks && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-amber-700">Current Remarks</label>
-                  <p className="text-sm text-amber-900 mt-1">{selectedCandidate.remarks}</p>
-                </div>
-              )}
+              </ScrollArea>
 
-              <div className="pt-4 space-y-3">
-                <label className="text-xs font-bold text-muted-foreground uppercase">Uploaded Documents</label>
-                <div className="grid grid-cols-1 gap-2">
-                  {[
-                    { label: "Photo", url: selectedCandidate.photo, icon: ImageIcon },
-                    { label: "Resume", url: selectedCandidate.resume, icon: FileText },
-                    { label: "Aadhaar Card", url: selectedCandidate.aadhaar, icon: FileText },
-                    { label: "PAN Card", url: selectedCandidate.pan, icon: FileText },
-                    { label: "Bank Passbook", url: selectedCandidate.passbook, icon: FileText },
-                  ].map((doc) => (
-                    doc.url ? (
-                      <a
-                        key={doc.label}
-                        href={doc.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3 rounded-md border border-green-200 bg-green-50/50 hover:bg-green-50 transition-colors group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <doc.icon className="h-4 w-4 text-green-600" />
-                          <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-green-800">{doc.label} - Uploaded</span>
-                            <span className="text-[10px] text-green-600 font-medium">Click to open Drive Link</span>
-                          </div>
-                        </div>
-                        <ExternalLink className="h-4 w-4 text-green-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                      </a>
-                    ) : (
-                      <div key={doc.label} className="flex items-center gap-3 p-3 rounded-md border border-dashed border-border opacity-70">
-                        <doc.icon className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground font-medium">{doc.label} - Not Uploaded</span>
-                      </div>
-                    )
-                  ))}
-                </div>
+              <div className="p-6 bg-white border-t border-slate-100 flex justify-end gap-3 rounded-b-3xl">
+                <Button variant="outline" onClick={() => setSelectedCandidate(null)} className="rounded-xl">Close View</Button>
+                <Button className="bg-indigo-600 rounded-xl">Generate Report</Button>
               </div>
-
-              <div className="pt-4 flex justify-end">
-                <Button variant="outline" onClick={() => setSelectedCandidate(null)}>Close</Button>
-              </div>
-            </div>
+            </>
           )}
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!deleteConfirmEmail} onOpenChange={(open) => !open && setDeleteConfirmEmail(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the application for <strong>{deleteConfirmEmail}</strong> from Google Sheets. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteConfirmEmail && handleDelete(deleteConfirmEmail)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete Application
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Dialog open={!!remarksData} onOpenChange={(open) => !open && setRemarksData(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Application Remarks</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <p className="text-sm text-muted-foreground">
-              Provide feedback or request missing information from the candidate. This will be emailed to them directly.
-            </p>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase">Remarks for {remarksData?.email}</label>
-              <Textarea
-                value={remarksData?.remarksInput || ""}
-                onChange={(e) => setRemarksData(prev => prev ? { ...prev, remarksInput: e.target.value } : null)}
-                placeholder="e.g. Please re-upload a clear copy of your Aadhaar card."
-                className="min-h-[120px]"
-              />
-            </div>
-            <div className="flex justify-between items-center gap-3">
-              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={async () => {
-                try {
-                  const res = await googleSheets.testEmail();
-                  toast({ title: "System Test", description: res.message || "Test initiated." });
-                } catch (e: any) {
-                  toast({ title: "Test Failed", description: e.message, variant: "destructive" });
-                }
-              }}>Test System</Button>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setRemarksData(null)}>Cancel</Button>
-                <Button
-                  onClick={() => remarksData && remarksMutation.mutate({ email: remarksData.email, remarks: remarksData.remarksInput })}
-                  disabled={remarksMutation.isPending || !remarksData?.remarksInput.trim()}
-                >
-                  {remarksMutation.isPending ? "Sending..." : "Send Remarks & Email"}
-                </Button>
-              </div>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
     </div>

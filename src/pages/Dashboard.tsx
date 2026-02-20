@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Clock, CheckCircle, Building2, TrendingUp, BarChart3, PieChart as PieChartIcon } from "lucide-react";
-import { googleSheets } from "@/lib/googleSheets";
+import { Users, Clock, CheckCircle, Building2, TrendingUp, BarChart3, PieChart as PieChartIcon, User, Layers } from "lucide-react";
+import { candidateApi } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
     BarChart,
     Bar,
@@ -17,55 +18,49 @@ import {
     Pie,
 } from "recharts";
 
-const DEFAULT_DEPARTMENTS = ["HR", "Tech", "Finance", "Marketing", "Operations"];
-const COLORS = ["#4954FA", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
+const DEPARTMENTS = [
+    "Education",
+    "Entertainment",
+    "AI Agent and Automation",
+    "Core AI/ML",
+    "Big Data",
+    "Mass Communication",
+    "Cutting Agents"
+];
+
+const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"];
 
 const Dashboard = () => {
-    const { data: departments = DEFAULT_DEPARTMENTS } = useQuery({
-        queryKey: ["departments"],
-        queryFn: async () => {
-            const res = await googleSheets.getDepartments();
-            return res.result === "success" ? res.data : DEFAULT_DEPARTMENTS;
-        }
-    });
-
     const { data: candidates = [], isLoading } = useQuery({
         queryKey: ["applications"],
         queryFn: async () => {
-            const response = await googleSheets.getApplications();
-            if (response.result === "success") {
-                return (response.data || []).map((app: any) => ({
-                    id: app.timestamp || Math.random().toString(),
-                    full_name: app.fullname || "Unknown",
-                    email: app.email || "",
-                    department: app.department || "Unassigned",
-                    status: app.status || "Pending",
-                }));
-            }
-            throw new Error(response.error || "Failed to fetch data");
+            return await candidateApi.getAllApplications();
         },
-        staleTime: 5 * 60 * 1000,
+        staleTime: 1 * 60 * 1000,
     });
 
     const total = candidates.length;
-    const pending = candidates.filter((c) => c.status === "Pending").length;
-    const verified = candidates.filter((c) => c.status === "Verified").length;
+    const individualCount = candidates.filter((c: any) => c.registrationType === "Individual").length;
+    const teamCount = candidates.filter((c: any) => c.registrationType === "Team").length;
+
+    const p1Pending = candidates.filter((c: any) => c.status === "Pending").length;
+    const p2Completed = candidates.filter((c: any) => c.phase2?.isCompleted).length;
 
     const statCards = [
-        { label: "Total Talent", value: total, icon: Users, color: "from-blue-500/10 to-blue-500/5", iconColor: "text-blue-600", path: "/dashboard/candidates" },
-        { label: "Pending Review", value: pending, icon: Clock, color: "from-amber-500/10 to-amber-500/5", iconColor: "text-amber-600", path: "/dashboard/pending" },
-        { label: "Verified Assets", value: verified, icon: CheckCircle, color: "from-emerald-500/10 to-emerald-500/5", iconColor: "text-emerald-600", path: "/dashboard/verified" },
-        { label: "Active Sectors", value: departments.length, icon: Building2, color: "from-indigo-500/10 to-indigo-500/5", iconColor: "text-indigo-600", path: "/dashboard/departments" },
+        { label: "Total Submissions", value: total, icon: Layers, color: "from-indigo-500/10 to-indigo-500/5", iconColor: "text-indigo-600", path: "/dashboard/candidates" },
+        { label: "Individual Apps", value: individualCount, icon: User, color: "from-blue-500/10 to-blue-500/5", iconColor: "text-blue-600", path: "/dashboard/candidates" },
+        { label: "Team Apps", value: teamCount, icon: Users, color: "from-emerald-500/10 to-emerald-500/5", iconColor: "text-emerald-600", path: "/dashboard/candidates" },
+        { label: "Phase 1 Pending", value: p1Pending, icon: Clock, color: "from-amber-500/10 to-amber-500/5", iconColor: "text-amber-600", path: "/dashboard/candidates" },
     ];
 
-    const deptData = departments.map((dept) => ({
+    const deptData = DEPARTMENTS.map((dept) => ({
         name: dept,
         count: candidates.filter((c: any) => c.department === dept).length,
     }));
 
-    const statusData = [
-        { name: "Verified", value: verified, color: "#10B981" },
-        { name: "Pending", value: pending, color: "#F59E0B" },
+    const phaseData = [
+        { name: "Phase 2 Completed", value: p2Completed, color: "#10B981" },
+        { name: "Phase 1 Only", value: total - p2Completed, color: "#6366f1" },
     ].filter(d => d.value > 0);
 
     if (isLoading) {
@@ -86,9 +81,9 @@ const Dashboard = () => {
     return (
         <div className="space-y-8 pb-10">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">Command Center</h1>
-                <p className="text-muted-foreground italic flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-emerald-500" /> Real-time workforce analytics and onboarding overview.
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">Admin Dashboard</h1>
+                <p className="text-slate-500 italic flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-emerald-500" /> HR Candidate System Overview • Phase 1 & 2 Analytics
                 </p>
             </div>
 
@@ -96,14 +91,14 @@ const Dashboard = () => {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {statCards.map((s) => (
                     <Link key={s.label} to={s.path}>
-                        <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 h-full">
-                            <CardContent className={`flex items-center gap-4 p-6 ${s.color} rounded-xl border border-white/10 h-full`}>
-                                <div className={`rounded-xl bg-white p-3 shadow-sm ${s.iconColor}`}>
+                        <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 h-full group">
+                            <CardContent className={`flex items-center gap-4 p-6 ${s.color} rounded-2xl border border-white/10 h-full`}>
+                                <div className={`rounded-xl bg-white p-3 shadow-sm ${s.iconColor} group-hover:scale-110 transition-transform`}>
                                     <s.icon className="h-5 w-5" />
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
-                                    <p className="text-3xl font-black text-foreground">{s.value}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{s.label}</p>
+                                    <p className="text-3xl font-black text-slate-900">{s.value}</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -113,13 +108,13 @@ const Dashboard = () => {
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
                 {/* Department Distribution */}
-                <Card className="lg:col-span-4 border-none shadow-sm bg-card/50 backdrop-blur-sm">
+                <Card className="lg:col-span-4 border-none shadow-sm bg-white rounded-2xl">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <div className="space-y-1">
-                            <CardTitle className="text-xl font-bold">Department Saturation</CardTitle>
-                            <CardDescription>Visual breakdown of candidates across key sectors.</CardDescription>
+                            <CardTitle className="text-xl font-bold">Department Distribution</CardTitle>
+                            <CardDescription>Candidates by category</CardDescription>
                         </div>
-                        <BarChart3 className="h-5 w-5 text-muted-foreground opacity-50" />
+                        <BarChart3 className="h-5 w-5 text-slate-400" />
                     </CardHeader>
                     <CardContent className="h-[350px] pt-4">
                         <ResponsiveContainer width="100%" height="100%">
@@ -129,16 +124,16 @@ const Dashboard = () => {
                                     dataKey="name"
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 500 }}
+                                    tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500 }}
                                     dy={10}
                                 />
                                 <YAxis
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                                    tick={{ fill: '#64748b', fontSize: 12 }}
                                 />
                                 <Tooltip
-                                    cursor={{ fill: 'hsl(var(--primary)/0.05)' }}
+                                    cursor={{ fill: '#f1f5f9' }}
                                     contentStyle={{
                                         borderRadius: '12px',
                                         border: 'none',
@@ -157,21 +152,21 @@ const Dashboard = () => {
                 </Card>
 
                 {/* Status Ratio */}
-                <Card className="lg:col-span-3 border-none shadow-sm bg-card/50 backdrop-blur-sm">
+                <Card className="lg:col-span-3 border-none shadow-sm bg-white rounded-2xl">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <div className="space-y-1">
-                            <CardTitle className="text-xl font-bold">Verification Status</CardTitle>
-                            <CardDescription>Ratio of pending vs verified candidates.</CardDescription>
+                            <CardTitle className="text-xl font-bold">Phase Progression</CardTitle>
+                            <CardDescription>Phase 1 vs Phase 2 completion</CardDescription>
                         </div>
-                        <PieChartIcon className="h-5 w-5 text-muted-foreground opacity-50" />
+                        <PieChartIcon className="h-5 w-5 text-slate-400" />
                     </CardHeader>
                     <CardContent className="h-[350px] flex flex-col items-center justify-center pt-4">
-                        {statusData.length > 0 ? (
+                        {phaseData.length > 0 ? (
                             <>
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
-                                            data={statusData}
+                                            data={phaseData}
                                             cx="50%"
                                             cy="50%"
                                             innerRadius={80}
@@ -179,7 +174,7 @@ const Dashboard = () => {
                                             paddingAngle={5}
                                             dataKey="value"
                                         >
-                                            {statusData.map((entry, index) => (
+                                            {phaseData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.color} />
                                             ))}
                                         </Pie>
@@ -189,61 +184,65 @@ const Dashboard = () => {
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="flex gap-6 mt-2">
-                                    {statusData.map((d) => (
+                                    {phaseData.map((d) => (
                                         <div key={d.name} className="flex items-center gap-2">
                                             <div className="h-3 w-3 rounded-full" style={{ backgroundColor: d.color }} />
-                                            <span className="text-xs font-bold uppercase tracking-tight text-muted-foreground">{d.name}: {d.value}</span>
+                                            <span className="text-xs font-bold uppercase tracking-tight text-slate-500">{d.name}: {d.value}</span>
                                         </div>
                                     ))}
                                 </div>
                             </>
                         ) : (
                             <div className="text-center py-8">
-                                <p className="text-muted-foreground font-medium">No data available for distribution.</p>
+                                <p className="text-slate-400 font-medium">No submission data available.</p>
                             </div>
                         )}
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Pending Applications List */}
-            <Card className="border-none shadow-sm overflow-hidden bg-card/50 backdrop-blur-sm">
+            {/* Recent Submissions List */}
+            <Card className="border-none shadow-sm overflow-hidden bg-white rounded-2xl">
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div className="space-y-1">
-                        <CardTitle className="text-xl font-bold">Pending Applications</CardTitle>
-                        <CardDescription>Candidates awaiting your review and verification.</CardDescription>
+                        <CardTitle className="text-xl font-bold">Recent Submissions</CardTitle>
+                        <CardDescription>Latest candidates awaiting review.</CardDescription>
                     </div>
-                    <Link to="/dashboard/pending" className="text-xs font-bold text-primary hover:underline">View All</Link>
+                    <Link to="/dashboard/candidates" className="text-xs font-bold text-indigo-600 hover:underline">View All</Link>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-muted/10 text-[10px] uppercase tracking-widest font-black text-muted-foreground border-y border-border/50">
+                            <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 border-y border-slate-100">
                                 <tr>
-                                    <th className="px-6 py-3">Full Name</th>
-                                    <th className="px-6 py-3">Department</th>
-                                    <th className="px-6 py-3 text-right">Action</th>
+                                    <th className="px-6 py-3">ID & NAME</th>
+                                    <th className="px-6 py-3">DEPARTMENT</th>
+                                    <th className="px-6 py-3">TYPE</th>
+                                    <th className="px-6 py-3 text-right">ACTION</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-border/50">
-                                {candidates.filter(c => c.status === "Pending").slice(0, 5).length > 0 ? (
-                                    candidates.filter(c => c.status === "Pending").slice(0, 5).map((c) => (
-                                        <tr key={c.id} className="hover:bg-muted/5 transition-colors group">
+                            <tbody className="divide-y divide-slate-50">
+                                {candidates.slice(0, 5).length > 0 ? (
+                                    candidates.slice(0, 5).map((c: any) => (
+                                        <tr key={c._id} className="hover:bg-slate-50/50 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-foreground">{c.full_name}</span>
-                                                    <span className="text-xs text-muted-foreground">{c.email}</span>
+                                                    <span className="text-xs font-bold text-indigo-600 font-mono">{c.registrationId}</span>
+                                                    <span className="text-sm font-bold text-slate-900">{c.registrationType === 'Individual' ? `${c.firstName} ${c.lastName}` : c.teamName}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-[10px] font-bold text-primary uppercase">
+                                                <span className="text-xs font-medium text-slate-600">
                                                     {c.department}
                                                 </span>
                                             </td>
+                                            <td className="px-6 py-4">
+                                                <Badge variant="outline" className="text-[10px] bg-slate-50">{c.registrationType}</Badge>
+                                            </td>
                                             <td className="px-6 py-4 text-right">
-                                                <Link to="/dashboard/pending">
-                                                    <button className="text-xs font-bold bg-primary text-white px-3 py-1 rounded-lg hover:bg-primary/90 transition-all opacity-0 group-hover:opacity-100">
-                                                        Review
+                                                <Link to="/dashboard/candidates">
+                                                    <button className="text-xs font-bold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-all">
+                                                        View
                                                     </button>
                                                 </Link>
                                             </td>
@@ -251,55 +250,13 @@ const Dashboard = () => {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={3} className="px-6 py-10 text-center text-sm text-muted-foreground italic">
-                                            No pending applications found.
+                                        <td colSpan={4} className="px-6 py-10 text-center text-sm text-slate-400 italic">
+                                            No recent submissions found.
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Operational Context */}
-            <Card className="border-none shadow-sm overflow-hidden bg-card/50 backdrop-blur-sm">
-                <CardHeader className="border-b border-border/50 bg-muted/20">
-                    <CardTitle className="text-xl font-bold">Operational Context</CardTitle>
-                    <CardDescription>A concise overview of the current talent landscape across all sectors.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="grid md:grid-cols-2 divide-x divide-border/50">
-                        <div className="p-6 space-y-4">
-                            <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">High-Volume Sectors</h4>
-                            <div className="space-y-4">
-                                {[...deptData].sort((a, b) => b.count - a.count).slice(0, 3).map((dept) => (
-                                    <div key={dept.name} className="space-y-1">
-                                        <div className="flex items-center justify-between text-sm font-semibold">
-                                            <span>{dept.name}</span>
-                                            <span>{dept.count} units</span>
-                                        </div>
-                                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-primary transition-all duration-1000"
-                                                style={{ width: `${(dept.count / (total || 1)) * 100}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="p-6 flex flex-col justify-center items-center text-center space-y-4">
-                            <div className="h-16 w-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-                                <TrendingUp className="h-8 w-8" />
-                            </div>
-                            <div>
-                                <h4 className="text-lg font-bold">Onboarding Efficiency</h4>
-                                <p className="text-sm text-muted-foreground max-w-[250px]">
-                                    Currently, <span className="text-emerald-600 font-bold">{Math.round((verified / (total || 1)) * 100)}%</span> of total talent has been successfully verified across the network.
-                                </p>
-                            </div>
-                        </div>
                     </div>
                 </CardContent>
             </Card>
