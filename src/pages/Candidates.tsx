@@ -67,6 +67,7 @@ interface Candidate {
   registrationType: 'Individual' | 'Team';
   track: string;
   status: 'Pending' | 'Approved' | 'Rejected';
+  remarks?: string;
 
   // Individual
   firstName?: string;
@@ -224,6 +225,7 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
                 <TableHead className="font-semibold text-slate-700">Track</TableHead>
                 <TableHead className="font-semibold text-slate-700">Phase Status</TableHead>
                 <TableHead className="font-semibold text-slate-700">Status</TableHead>
+                <TableHead className="font-semibold text-slate-700">Remarks</TableHead>
                 <TableHead className="text-right font-semibold text-slate-700">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -280,6 +282,11 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
                           <SelectItem value="Rejected">Rejected</SelectItem>
                         </SelectContent>
                       </Select>
+                    </TableCell>
+                    <TableCell>
+                      <div className="max-w-[150px] truncate text-xs text-slate-500 italic" title={c.remarks}>
+                        {c.remarks || "-"}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => setSelectedCandidate(c)} className="hover:bg-indigo-50 text-indigo-600">
