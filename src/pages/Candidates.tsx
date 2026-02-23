@@ -107,12 +107,14 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
   const [search, setSearch] = useState("");
   const [trackFilter, setTrackFilter] = useState<string>(filterTrack || "All");
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ id: string, status: string, name: string } | null>(null);
+  const [remarks, setRemarks] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { candidates, isPending, isFetching, refetch, updateLocalCache } = useGlobalData();
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string, status: string }) => candidateApi.updateStatus(id, status),
+    mutationFn: ({ id, status, remarks }: { id: string, status: string, remarks: string }) => candidateApi.updateStatus(id, status, remarks),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       // Update global cache immediately
@@ -134,6 +136,23 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
     const matchesStatus = !filterStatus || c.status === filterStatus;
     return matchesSearch && matchesTrack && matchesStatus;
   }), [candidates, search, trackFilter, filterStatus]);
+
+  const handleStatusChangeClick = (c: Candidate, newStatus: string) => {
+    if (newStatus === c.status) return;
+    const name = c.registrationType === 'Individual' ? `${c.firstName} ${c.lastName}` : c.teamName || 'Unknown';
+    setPendingStatusChange({ id: c._id, status: newStatus, name });
+    setRemarks(""); // Reset remarks on open
+  };
+
+  const confirmStatusChange = () => {
+    if (!pendingStatusChange) return;
+    statusMutation.mutate({
+      id: pendingStatusChange.id,
+      status: pendingStatusChange.status,
+      remarks
+    });
+    setPendingStatusChange(null);
+  };
 
   const TableSkeleton = () => (
     <>
@@ -247,7 +266,7 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
                     <TableCell>
                       <Select
                         defaultValue={c.status}
-                        onValueChange={(v) => statusMutation.mutate({ id: c._id, status: v })}
+                        onValueChange={(v) => handleStatusChangeClick(c, v)}
                       >
                         <SelectTrigger className={`h-8 w-28 text-xs font-bold rounded-full border-none px-3 ${c.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
                           c.status === 'Rejected' ? 'bg-rose-100 text-rose-700' :
@@ -433,6 +452,45 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Confirmation & Remarks Dialog */}
+      <Dialog open={!!pendingStatusChange} onOpenChange={(open) => !open && setPendingStatusChange(null)}>
+        <DialogContent className="sm:max-w-md rounded-2xl border-none">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              Update Status
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <p className="text-sm text-slate-600">
+              You are about to switch <strong className="text-slate-900">{pendingStatusChange?.name}'s</strong> status to <Badge variant="outline" className={pendingStatusChange?.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : pendingStatusChange?.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200'}>{pendingStatusChange?.status}</Badge>.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="remarks" className="text-slate-700 font-semibold text-sm">HR Remarks (Sent via Email to Candidate)</Label>
+              <Textarea
+                id="remarks"
+                placeholder={pendingStatusChange?.status === 'Rejected' ? "e.g., Your project lacked sufficient codebase evidence. Please revise." : "e.g., Great concept, we look forward to the final build!"}
+                className="resize-none h-24 rounded-xl border-slate-200"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-slate-400 italic">
+              Updating this status will automatically send a notification email to the candidate regarding their phase progression.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setPendingStatusChange(null)} className="rounded-xl">Cancel</Button>
+            <Button
+              onClick={confirmStatusChange}
+              className="bg-indigo-600 rounded-xl hover:bg-indigo-700"
+              disabled={statusMutation.isPending}
+            >
+              {statusMutation.isPending ? "Updating..." : "Confirm & Send Mail"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

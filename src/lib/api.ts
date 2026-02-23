@@ -61,18 +61,52 @@ export const candidateApi = {
         });
         const data = await response.json();
         if (data.result === 'error') throw new Error(data.error);
-        return data.data || [];
+
+        const apps = data.data || [];
+
+        // Inject mock "12345" data so it appears in Admin Dashboards
+        if (!apps.find((a: any) => a.registrationId === '12345' || a.registrationId === 12345)) {
+            apps.push({
+                registrationId: "12345",
+                firstName: "Anjali",
+                lastName: "(Mock Candidate)",
+                email: "komallarna06@gmail.com",
+                phone: "0000000000",
+                department: "AI Agent and Automation",
+                collegeCompany: "Demo University",
+                registrationType: "Individual",
+                status: "Pending",
+                projectDescription: "This is a mock project description for testing purposes.",
+                descriptionUrl: "https://docs.google.com/document/d/mock-link",
+                pptUrl: "https://docs.google.com/presentation/d/mock-link",
+                phase1SubmittedAt: new Date().toISOString(),
+                githubRepoLink: "https://github.com/mock/repo",
+                githubUrl: "https://docs.google.com/document/d/mock-link-gh",
+                readmeUrl: "https://drive.google.com/file/d/mock-link-readme",
+                finalProjectZipUrl: "https://drive.google.com/file/d/mock-link-zip",
+                phase2SubmittedAt: new Date().toISOString(),
+                isCompleted: true
+            });
+        }
+
+        return apps;
     },
 
-    updateStatus: async (id, status) => {
+    updateStatus: async (id, status, remarks?: string) => {
+        // If it's the mock ID, just simulate success locally
+        if (id === '12345' || id === 12345) {
+            await new Promise(resolve => setTimeout(resolve, 600));
+            return { _id: id, status, remarks };
+        }
+
         const response = await fetch(API_BASE_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'update_status', data: { _id: id, status } }),
+            body: JSON.stringify({ action: 'update_status', data: { id, status, remarks } }),
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         });
         const data = await response.json();
         if (data.result === 'error') throw new Error(data.error);
-        return data.data;
+        return { _id: id, status, remarks };
     },
 
     getPhase: async () => {

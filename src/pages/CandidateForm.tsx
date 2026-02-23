@@ -251,12 +251,14 @@ const CandidateForm = () => {
           <CardContent className="pt-10 pb-10 space-y-4">
             <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-500" />
             <h2 className="text-2xl font-bold text-slate-800">Submission Successful!</h2>
-            <p className="text-slate-600">
+            <p className="text-slate-600 font-medium">
               {globalPhase === 1
-                ? "Your project description has been received. Check your email for confirmation."
-                : "Your final project has been received and is under review."}
+                ? "Your Phase 1 project has been received. Please wait for Phase 2 to begin."
+                : "Your final project has been received and is under review. All the best!"}
             </p>
-            <Button onClick={() => setSubmitted(false)} className="bg-indigo-600 hover:bg-indigo-700">Submit Another Response</Button>
+            <p className="text-xs text-slate-400 mt-4">
+              You will receive email updates regarding your submission status from the HR team.
+            </p>
           </CardContent>
         </Card>
       </div>
