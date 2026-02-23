@@ -21,6 +21,10 @@ const candidateSchema = new mongoose.Schema({
         enum: ['Pending', 'Approved', 'Rejected'],
         default: 'Pending'
     },
+    remarks: {
+        type: String,
+        default: ''
+    },
 
     // Individual specific
     firstName: String,

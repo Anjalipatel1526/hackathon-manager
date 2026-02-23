@@ -23,7 +23,9 @@ router.post('/phase1', upload.single('ppt'), async (req, res) => {
         const candidate = await Candidate.findOne({ registrationId });
         if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
 
-        const identifier = candidate.registrationType === 'Individual' ? candidate.firstName + ' ' + candidate.lastName : candidate.teamName;
+        const identifier = candidate.registrationType === 'Individual'
+            ? `${candidate.firstName} ${candidate.lastName}_${candidate.email}`
+            : `${candidate.teamName}_${candidate.teamLeaderEmail}`;
         const targetEmail = candidate.registrationType === 'Individual' ? candidate.email : candidate.teamLeaderEmail;
 
         // 1. Setup Drive folder
@@ -85,7 +87,9 @@ router.post('/phase2', upload.fields([
         const candidate = await Candidate.findOne({ registrationId });
         if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
 
-        const identifier = candidate.registrationType === 'Individual' ? candidate.firstName + ' ' + candidate.lastName : candidate.teamName;
+        const identifier = candidate.registrationType === 'Individual'
+            ? `${candidate.firstName} ${candidate.lastName}_${candidate.email}`
+            : `${candidate.teamName}_${candidate.teamLeaderEmail}`;
         const targetEmail = candidate.registrationType === 'Individual' ? candidate.email : candidate.teamLeaderEmail;
 
         // 1. Setup Drive folder (use same logic)
@@ -178,10 +182,30 @@ router.get('/applications/:regId', async (req, res) => {
  */
 router.patch('/status/:id', async (req, res) => {
     try {
-        const { status } = req.body;
-        const candidate = await Candidate.findByIdAndUpdate(req.params.id, { status }, { new: true });
+        const { status, remarks } = req.body;
+        const candidate = await Candidate.findByIdAndUpdate(
+            req.params.id,
+            { status, remarks },
+            { new: true }
+        );
+
+        if (!candidate) {
+            return res.status(404).json({ error: 'Candidate not found' });
+        }
+
+        const name = candidate.registrationType === 'Individual'
+            ? `${candidate.firstName} ${candidate.lastName}`
+            : candidate.teamName;
+        const email = candidate.registrationType === 'Individual'
+            ? candidate.email
+            : candidate.teamLeaderEmail;
+
+        // Send Email Notification
+        await emailService.sendStatusUpdateEmail(email, name, status, remarks);
+
         res.json(candidate);
     } catch (err) {
+        console.error('Status Update Error:', err);
         res.status(500).json({ error: err.message });
     }
 });

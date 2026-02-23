@@ -68,3 +68,57 @@ export const sendPhase2Email = async (email, name, isTeam = false) => {
 
     await sendConfirmationEmail(email, subject, message);
 };
+
+/**
+ * Status Update Email (Approved/Rejected)
+ */
+export const sendStatusUpdateEmail = async (email, name, status, remarks = '') => {
+    const subject = `Application Status Update - ${status}`;
+    const statusColor = status === 'Approved' ? '#10b981' : '#f43f5e';
+    const statusText = status === 'Approved' ? 'Congratulation! Your application has been Approved.' : 'We regret to inform you that your application has been Rejected.';
+
+    const htmlContent = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; rounded: 12px; overflow: hidden;">
+            <div style="background-color: #4f46e5; padding: 20px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Codekar Hackathon</h1>
+            </div>
+            <div style="padding: 30px; background-color: #ffffff;">
+                <h2 style="color: #1e293b; margin-top: 0;">Hello ${name},</h2>
+                <p style="font-size: 16px; color: #475569;">${statusText}</p>
+                
+                <div style="margin: 25px 0; padding: 20px; background-color: #f8fafc; border-left: 4px solid ${statusColor}; border-radius: 4px;">
+                    <p style="margin: 0; font-weight: bold; color: ${statusColor}; text-transform: uppercase; font-size: 14px; letter-spacing: 0.05em;">Current Status</p>
+                    <p style="margin: 5px 0 0 0; font-size: 18px; color: #1e293b; font-weight: bold;">${status}</p>
+                </div>
+
+                ${remarks ? `
+                <div style="margin-bottom: 25px;">
+                    <p style="margin: 0 0 8px 0; font-weight: bold; color: #64748b; font-size: 14px; text-transform: uppercase;">HR Remarks:</p>
+                    <div style="padding: 15px; background-color: #f1f5f9; border-radius: 8px; color: #334155; font-style: italic;">
+                        "${remarks}"
+                    </div>
+                </div>
+                ` : ''}
+
+                <p style="font-size: 14px; color: #64748b; margin-bottom: 0;">If you have any questions, feel free to reach out to our support team.</p>
+            </div>
+            <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+                <p style="margin: 0; font-size: 12px; color: #94a3b8;">&copy; 2026 Codekar Hackathon HR Team. All rights reserved.</p>
+            </div>
+        </div>
+    `;
+
+    const mailOptions = {
+        from: `"Codekar HR Team" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: subject,
+        html: htmlContent,
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Status update email (${status}) sent to ${email}`);
+    } catch (err) {
+        console.error('Error sending status update email:', err);
+    }
+};

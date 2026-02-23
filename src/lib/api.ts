@@ -1,10 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-
-const api = axios.create({
-    baseURL: API_BASE_URL,
-});
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://script.google.com/macros/s/AKfycbyLBiuyQ2PrhEAURIkW50qKS6r39QzokSsU7TIzxmrcz7FInh5-CJqwPggk8lyCQNqmew/exec';
+const NODE_API_URL = 'http://localhost:5000/api'; // Or use a relative path /api if same domain
 
 export const candidateApi = {
     submitPhase1: async (payload) => {
@@ -99,14 +96,22 @@ export const candidateApi = {
             return { _id: id, status, remarks };
         }
 
-        const response = await fetch(API_BASE_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'update_status', data: { id, status, remarks } }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        // Call the Node.js backend to trigger email notification
+        // In production, this should point to your Vercel /api route
+        const baseUrl = window.location.hostname === 'localhost' ? NODE_API_URL : '/api';
+
+        const response = await fetch(`${baseUrl}/status/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status, remarks }),
+            headers: { 'Content-Type': 'application/json' }
         });
-        const data = await response.json();
-        if (data.result === 'error') throw new Error(data.error);
-        return { _id: id, status, remarks };
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to update status');
+        }
+
+        return await response.json();
     },
 
     getPhase: async () => {

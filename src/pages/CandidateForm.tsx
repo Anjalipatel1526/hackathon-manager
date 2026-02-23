@@ -191,6 +191,16 @@ const CandidateForm = () => {
     toast({ title: "Session Cleared", description: "You have been signed out of this session." });
   };
 
+  const getSanitizedIdentity = () => {
+    const name = regType === 'Individual'
+      ? `${formData.firstName} ${formData.lastName}`.trim()
+      : formData.teamName;
+    const email = regType === 'Individual' ? formData.email : formData.teamLeaderEmail;
+    // Replace spaces and special characters with underscores, keeping dots and @ for email
+    const identity = `${name}_${email}`.replace(/[^a-zA-Z0-9.@_-]/g, '_');
+    return identity;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -203,33 +213,43 @@ const CandidateForm = () => {
     setLoading(true);
     try {
       if (globalPhase === 1) {
+        const identity = getSanitizedIdentity();
         const payload: any = {
           data: {
             registrationId: formData.registrationId,
             projectDescription: formData.projectDescription,
+            candidateIdentity: identity,
           },
           files: {}
         };
         if (files.ppt) {
-          payload.files.ppt = await toBase64(files.ppt);
+          const fileData = await toBase64(files.ppt);
+          fileData.name = `${identity}_${fileData.name}`;
+          payload.files.ppt = fileData;
         }
 
         await candidateApi.submitPhase1(payload);
         toast({ title: "Upload Successful", description: "Your phase 1 project details have been updated." });
       } else {
         // Phase 2 Submission
+        const identity = getSanitizedIdentity();
         const payload: any = {
           data: {
             registrationId: formData.registrationId,
             githubRepoLink: formData.githubRepoLink,
+            candidateIdentity: identity,
           },
           files: {}
         };
         if (files.readme) {
-          payload.files.readme = await toBase64(files.readme);
+          const fileData = await toBase64(files.readme);
+          fileData.name = `${identity}_${fileData.name}`;
+          payload.files.readme = fileData;
         }
         if (files.finalZip) {
-          payload.files.finalZip = await toBase64(files.finalZip);
+          const fileData = await toBase64(files.finalZip);
+          fileData.name = `${identity}_${fileData.name}`;
+          payload.files.finalZip = fileData;
         }
 
         await candidateApi.submitPhase2(payload);
