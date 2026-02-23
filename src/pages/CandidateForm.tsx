@@ -138,15 +138,15 @@ const CandidateForm = () => {
     }
   };
 
-  // Automatic fetch when code is entered
+  // Automatic fetch when code is entered or on mount if code exists
   useEffect(() => {
     const checkAndFetch = async () => {
-      if (regIdInput.length >= 5) {
+      if (regIdInput.length >= 5 && !formData.registrationId) {
         await handleFetchData();
       }
     };
     checkAndFetch();
-  }, [regIdInput]);
+  }, [regIdInput, formData.registrationId]);
 
   useEffect(() => {
     const initPhase = async () => {
@@ -340,7 +340,15 @@ const CandidateForm = () => {
             </div>
           </CardHeader>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="relative">
+            {fetchingData && !showCodePopup && (
+              <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center rounded-b-3xl">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
+                  <p className="text-indigo-900 font-bold animate-pulse">Syncing Registration Data...</p>
+                </div>
+              </div>
+            )}
             <CardContent className="p-8 space-y-8">
               {/* Individual vs Team Selection */}
               {!showCodePopup && (
@@ -376,6 +384,14 @@ const CandidateForm = () => {
                           <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Contact Email</p>
                           <p className="font-bold text-slate-800 italic underline">{formData.email}</p>
                         </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Contact Phone</p>
+                          <p className="font-bold text-slate-800">{formData.phone || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">College / Company</p>
+                          <p className="font-bold text-slate-800">{formData.collegeCompany || "N/A"}</p>
+                        </div>
                       </>
                     ) : (
                       <>
@@ -386,6 +402,14 @@ const CandidateForm = () => {
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Leader Email</p>
                           <p className="font-bold text-slate-800 italic underline">{formData.teamLeaderEmail}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Contact Phone</p>
+                          <p className="font-bold text-slate-800">{formData.phone || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">College / Company</p>
+                          <p className="font-bold text-slate-800">{formData.collegeCompany || "N/A"}</p>
                         </div>
                       </>
                     )}
