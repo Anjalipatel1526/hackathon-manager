@@ -119,7 +119,7 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       // Update global cache immediately
-      const updatedCandidates = candidates.map(c => c._id === data._id ? { ...c, status: data.status } : c);
+      const updatedCandidates = candidates.map(c => c._id === data._id ? { ...c, status: data.status, remarks: data.remarks } : c);
       updateLocalCache(updatedCandidates);
       toast({ title: "Success", description: "Status updated successfully." });
     },

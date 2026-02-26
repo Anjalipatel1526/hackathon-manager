@@ -67,6 +67,10 @@ const App = () => (
                         element={<DashboardLayout><Candidates filterStatus="Approved" /></DashboardLayout>}
                       />
                       <Route
+                        path="rejected"
+                        element={<DashboardLayout><Candidates filterStatus="Rejected" /></DashboardLayout>}
+                      />
+                      <Route
                         path="settings"
                         element={<DashboardLayout><DashboardSettings /></DashboardLayout>}
                       />

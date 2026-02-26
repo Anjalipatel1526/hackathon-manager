@@ -12,7 +12,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, Clock, CheckCircle, Settings, LogOut, FileText, Building2 } from "lucide-react";
+import { LayoutDashboard, Users, Clock, CheckCircle, XCircle, Settings, LogOut, FileText, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
@@ -20,6 +20,7 @@ const navItems = [
   { title: "All Participants", url: "/admin/candidates", icon: Users },
   { title: "Pending", url: "/admin/pending", icon: Clock },
   { title: "Approved", url: "/admin/approved", icon: CheckCircle },
+  { title: "Rejected", url: "/admin/rejected", icon: XCircle },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 

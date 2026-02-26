@@ -78,17 +78,19 @@ const Dashboard = () => {
         const total = displayData.length;
         const individualCount = displayData.filter((c: any) => c.registrationType === "Individual").length;
         const teamCount = displayData.filter((c: any) => c.registrationType === "Team").length;
-        const p1Pending = displayData.filter((c: any) => c.status === "Pending").length;
+        const approvedCount = displayData.filter((c: any) => c.status === "Approved").length;
+        const rejectedCount = displayData.filter((c: any) => c.status === "Rejected").length;
+        const p1Pending = displayData.filter((c: any) => !c.status || c.status === "Pending").length;
         const p2Completed = displayData.filter((c: any) => c.phase2?.isCompleted).length;
 
-        return { total, individualCount, teamCount, p1Pending, p2Completed };
+        return { total, individualCount, teamCount, approvedCount, rejectedCount, p1Pending, p2Completed };
     }, [displayData]);
 
     const statCards = useMemo(() => [
         { label: "Total Submissions", value: stats.total, icon: Layers, color: "from-indigo-500/10 to-indigo-500/5", iconColor: "text-indigo-600", path: "/admin/candidates" },
-        { label: "Individual Apps", value: stats.individualCount, icon: User, color: "from-blue-500/10 to-blue-500/5", iconColor: "text-blue-600", path: "/admin/candidates" },
-        { label: "Team Apps", value: stats.teamCount, icon: Users, color: "from-emerald-500/10 to-emerald-500/5", iconColor: "text-emerald-600", path: "/admin/candidates" },
-        { label: "Phase 1 Pending", value: stats.p1Pending, icon: Clock, color: "from-amber-500/10 to-amber-500/5", iconColor: "text-amber-600", path: "/admin/candidates" },
+        { label: "Approved", value: stats.approvedCount, icon: CheckCircle, color: "from-emerald-500/10 to-emerald-500/5", iconColor: "text-emerald-600", path: "/admin/candidates" },
+        { label: "Rejected", value: stats.rejectedCount, icon: RotateCw, color: "from-rose-500/10 to-rose-500/5", iconColor: "text-rose-600", path: "/admin/candidates" },
+        { label: "Pending Review", value: stats.p1Pending, icon: Clock, color: "from-amber-500/10 to-amber-500/5", iconColor: "text-amber-600", path: "/admin/candidates" },
     ], [stats]);
 
     const trackData = useMemo(() => TRACKS.map((track) => ({
@@ -295,7 +297,15 @@ const Dashboard = () => {
                                         <tr key={c._id} className="hover:bg-slate-50/50 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
-                                                    <span className="text-xs font-bold text-indigo-600 font-mono">{c.registrationId}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-bold text-indigo-600 font-mono">{c.registrationId}</span>
+                                                        <Badge className={`text-[9px] h-4 px-1 ${c.status === 'Approved' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none' :
+                                                                c.status === 'Rejected' ? 'bg-rose-100 text-rose-700 hover:bg-rose-100 border-none' :
+                                                                    'bg-amber-100 text-amber-700 hover:bg-amber-100 border-none'
+                                                            }`}>
+                                                            {c.status || 'Pending'}
+                                                        </Badge>
+                                                    </div>
                                                     <span className="text-sm font-bold text-slate-900">{c.registrationType === 'Individual' ? `${c.firstName} ${c.lastName}` : c.teamName}</span>
                                                 </div>
                                             </td>

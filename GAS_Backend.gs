@@ -100,7 +100,7 @@ function handleRequest(payload) {
         const remarksCol = headers.indexOf("remarks");
 
         // Use ID or _id from payload
-        const targetId = data.id || data.registrationId;
+        const targetId = (data.id || data.registrationId || "").toString();
 
         for (let i = 1; i < rawData.length; i++) {
             if (rawData[i][idCol].toString() === targetId.toString()) {
@@ -158,7 +158,7 @@ function handleRequest(payload) {
         }
 
         // --- MOCK HANDLER FOR TESTING ---
-        if (targetId.toString() === "12345") {
+        if (targetId === "12345") {
             const identifier = "Anjali";
             const candidateEmail = "komallarna06@gmail.com";
             const newStatus = data.status;
