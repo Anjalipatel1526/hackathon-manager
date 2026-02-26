@@ -39,8 +39,14 @@ const toBase64 = (file: File) => new Promise<{ base64: string, name: string, typ
 });
 
 const CandidateForm = () => {
-  const [globalPhase, setGlobalPhase] = useState<number>(1);
-  const [phase, setPhase] = useState<"1" | "2">("1");
+  const [globalPhase, setGlobalPhase] = useState<number>(() => {
+    const saved = localStorage.getItem("codekarx_global_phase");
+    return saved ? parseInt(saved, 10) : 1;
+  });
+  const [phase, setPhase] = useState<"1" | "2">(() => {
+    const saved = localStorage.getItem("codekarx_global_phase");
+    return (saved || "1") as "1" | "2";
+  });
   const [regType, setRegType] = useState<"Individual" | "Team">("Individual");
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
@@ -117,6 +123,19 @@ const CandidateForm = () => {
 
         // Auto switch to phase 2 if phase 1 is completed
         if (data.phase1?.projectDescription) {
+          // If global phase is still 1 but they finished it, we might want to show phase 1 success or allow phase 2 if allowed
+          // However, the user specifically asked for "phase 2 only once the phase 2 start"
+          if (globalPhase === 1) {
+            setSubmitted(true);
+          } else if (globalPhase === 2) {
+            if (data.phase2?.githubRepoLink) {
+              setSubmitted(true);
+            }
+            setPhase("2");
+          }
+        } else if (globalPhase === 2) {
+          // If it's phase 2 globally but they haven't done phase 1? 
+          // Usually phase 1 is prerequisite.
           setPhase("2");
         }
 
@@ -153,6 +172,7 @@ const CandidateForm = () => {
       try {
         const currentGlobalPhase = await candidateApi.getPhase();
         setGlobalPhase(currentGlobalPhase);
+        localStorage.setItem("codekarx_global_phase", currentGlobalPhase.toString());
         setPhase(currentGlobalPhase.toString() as "1" | "2");
 
         // Always authenticate
@@ -164,7 +184,7 @@ const CandidateForm = () => {
       }
     }
     initPhase();
-  }, []);
+  }, [globalPhase]);
 
   const handleClearSession = () => {
     localStorage.removeItem("codekarx_reg_id");

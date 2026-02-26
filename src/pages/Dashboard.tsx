@@ -22,6 +22,16 @@ import {
     PieChart,
     Pie,
 } from "recharts";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const TRACKS = [
     "Education",
@@ -40,6 +50,7 @@ const Dashboard = () => {
     const { toast } = useToast();
     const [currentPhase, setCurrentPhase] = useState<number>(1);
     const [isUpdatingPhase, setIsUpdatingPhase] = useState(false);
+    const [isPhaseDialogOpen, setIsPhaseDialogOpen] = useState(false);
 
     useEffect(() => {
         const fetchPhase = async () => {
@@ -54,13 +65,12 @@ const Dashboard = () => {
     }, []);
 
     const handleTogglePhase = async () => {
-        if (!window.confirm(`Are you sure you want to change the active registration phase to Phase ${currentPhase === 1 ? 2 : 1}?`)) return;
-
         setIsUpdatingPhase(true);
         try {
             const nextPhase = currentPhase === 1 ? 2 : 1;
             await candidateApi.updatePhase(nextPhase);
             setCurrentPhase(nextPhase);
+            setIsPhaseDialogOpen(false);
             toast({
                 title: `Phase ${nextPhase} Activated`,
                 description: nextPhase === 2 ? "All Phase 1 candidates have been notified." : "Registration reverted to Phase 1 allowed."
@@ -103,7 +113,6 @@ const Dashboard = () => {
         { name: "Phase 1 Only", value: stats.total - stats.p2Completed, color: "#6366f1" },
     ].filter(d => d.value > 0), [stats]);
 
-    // Only show skeletons if we have absolutely no data (first visit ever)
     if (isPending) {
         return (
             <div className="space-y-6">
@@ -137,7 +146,7 @@ const Dashboard = () => {
                 </div>
                 <div className="flex gap-4 items-center">
                     <Button
-                        onClick={handleTogglePhase}
+                        onClick={() => setIsPhaseDialogOpen(true)}
                         disabled={isUpdatingPhase}
                         className={`${currentPhase === 1 ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                     >
@@ -159,6 +168,35 @@ const Dashboard = () => {
                 </div>
             </div>
 
+            <AlertDialog open={isPhaseDialogOpen} onOpenChange={setIsPhaseDialogOpen}>
+                <AlertDialogContent className="bg-white/95 backdrop-blur-xl border-white/20 shadow-2xl rounded-3xl p-8 max-w-sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-bold text-slate-900 tracking-tight">
+                            Confirm Phase {currentPhase === 1 ? 2 : 1}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 font-medium leading-relaxed pt-2">
+                            {currentPhase === 1
+                                ? "This will close Phase 1 and start receiving Phase 2 documentation."
+                                : "This will revert the registration portal to Phase 1 mode."}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="pt-6 gap-2">
+                        <AlertDialogCancel className="rounded-xl border-slate-200 text-slate-500 font-bold hover:bg-slate-50">
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleTogglePhase();
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 px-6"
+                        >
+                            Confirm Switch
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             {/* Stats Grid */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {statCards.map((s) => (
@@ -179,7 +217,7 @@ const Dashboard = () => {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-                {/* Department Distribution */}
+                {/* Track Distribution */}
                 <Card className="lg:col-span-4 border-none shadow-sm bg-white rounded-2xl">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
                         <CardTitle className="text-xl font-bold">Hackathon Track Distribution</CardTitle>
@@ -221,7 +259,7 @@ const Dashboard = () => {
                     </CardContent>
                 </Card>
 
-                {/* Status Ratio */}
+                {/* Phase Progression */}
                 <Card className="lg:col-span-3 border-none shadow-sm bg-white rounded-2xl">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <div className="space-y-1">
@@ -276,7 +314,7 @@ const Dashboard = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div className="space-y-1">
                         <CardTitle className="text-xl font-bold">Recent Submissions</CardTitle>
-                        <CardDescription>Latest candidates awaiting review.</CardDescription>
+                        <CardDescription>Latest registered candidates.</CardDescription>
                     </div>
                     <Link to="/admin/candidates" className="text-xs font-bold text-indigo-600 hover:underline">View All</Link>
                 </CardHeader>
@@ -294,7 +332,7 @@ const Dashboard = () => {
                             <tbody className="divide-y divide-slate-50">
                                 {candidates.slice(0, 5).length > 0 ? (
                                     candidates.slice(0, 5).map((c: any) => (
-                                        <tr key={c._id} className="hover:bg-slate-50/50 transition-colors group">
+                                        <tr key={c._id || c.registrationId} className="hover:bg-slate-50/50 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
                                                     <div className="flex items-center gap-2">

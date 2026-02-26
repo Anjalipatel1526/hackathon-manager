@@ -83,8 +83,14 @@ function handleRequest(payload) {
     }
 
     if (action === "update_phase") {
-        let sheet = ss.getSheetByName(SETTINGS_SHEET_NAME) || ss.insertSheet(SETTINGS_SHEET_NAME);
-        sheet.getRange(2, 1).setValue(data.currentPhase);
+        let sheet = ss.getSheetByName(SETTINGS_SHEET_NAME);
+        if (!sheet) {
+            sheet = ss.insertSheet(SETTINGS_SHEET_NAME);
+            sheet.appendRow(["currentPhase"]);
+            sheet.appendRow([data.currentPhase]);
+        } else {
+            sheet.getRange(2, 1).setValue(data.currentPhase);
+        }
         return createResponse({ result: "success", phase: data.currentPhase });
     }
 
