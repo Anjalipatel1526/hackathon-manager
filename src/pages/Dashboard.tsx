@@ -130,7 +130,7 @@ const Dashboard = () => {
                         </Badge>
                     </h1>
                     <p className="text-slate-500 italic flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-emerald-500" /> Codekar Hackathon System Overview • Phase 1 & 2 Analytics
+                        <TrendingUp className="h-4 w-4 text-emerald-500" /> Kodekar Hackathon System Overview • Phase 1 & 2 Analytics
                     </p>
                 </div>
                 <div className="flex gap-4 items-center">
