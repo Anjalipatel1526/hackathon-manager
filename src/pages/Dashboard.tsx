@@ -132,7 +132,7 @@ const Dashboard = () => {
                         </Badge>
                     </h1>
                     <p className="text-slate-500 italic flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-emerald-500" /> Kodekar Hackathon System Overview • Phase 1 & 2 Analytics
+                        <TrendingUp className="h-4 w-4 text-emerald-500" /> Codekarx Hackathon System Overview • Phase 1 & 2 Analytics
                     </p>
                 </div>
                 <div className="flex gap-4 items-center">
@@ -300,8 +300,8 @@ const Dashboard = () => {
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs font-bold text-indigo-600 font-mono">{c.registrationId}</span>
                                                         <Badge className={`text-[9px] h-4 px-1 ${c.status === 'Approved' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none' :
-                                                                c.status === 'Rejected' ? 'bg-rose-100 text-rose-700 hover:bg-rose-100 border-none' :
-                                                                    'bg-amber-100 text-amber-700 hover:bg-amber-100 border-none'
+                                                            c.status === 'Rejected' ? 'bg-rose-100 text-rose-700 hover:bg-rose-100 border-none' :
+                                                                'bg-amber-100 text-amber-700 hover:bg-amber-100 border-none'
                                                             }`}>
                                                             {c.status || 'Pending'}
                                                         </Badge>

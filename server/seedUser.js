@@ -17,7 +17,7 @@ async function seedUser() {
             email: "komallarna06@gmail.com",
             phone: "+91 9876543210",
             department: "AI Agent and Automation",
-            collegeCompany: "Kodekar Institute",
+            collegeCompany: "Codekarx Institute",
             registrationId: "12345",
             registrationType: "Individual",
             phase1: {

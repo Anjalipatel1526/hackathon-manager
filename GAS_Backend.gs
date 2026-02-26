@@ -132,17 +132,17 @@ function handleRequest(payload) {
                     let customMessage = "";
                     
                     if (newStatus === 'Approved') {
-                        subject = "Phase 1 Approved - Kodekar Hackathon";
+                        subject = "Phase 1 Approved - Codekarx Hackathon";
                         customMessage = "Your PPT is approved, please send your GitHub link and README file for Phase 2.";
                     } else if (newStatus === 'Rejected') {
-                        subject = "Application Status Update - Kodekar Hackathon";
+                        subject = "Application Status Update - Codekarx Hackathon";
                         customMessage = "We regret to inform you that your project has been rejected.";
                     } else {
                         subject = "Application Status Update";
                         customMessage = `Your status has been updated to: ${newStatus}`;
                     }
 
-                    const body = `Hi ${identifier},\n\n${customMessage}\n\n${newRemarks ? `HR Remarks: ${newRemarks}\n\n` : ''}Best Regards,\nKodekar HR Team`;
+                    const body = `Hi ${identifier},\n\n${customMessage}\n\n${newRemarks ? `HR Remarks: ${newRemarks}\n\n` : ''}Best Regards,\nCodekarx HR Team`;
                     
                     try {
                         GmailApp.sendEmail(candidateEmail, subject, body, {
@@ -167,17 +167,17 @@ function handleRequest(payload) {
             let subject = "";
             let customMessage = "";
             if (newStatus === 'Approved') {
-                subject = "Phase 1 Approved - Kodekar Hackathon";
+                subject = "Phase 1 Approved - Codekarx Hackathon";
                 customMessage = "Your PPT is approved, please send your GitHub link and README file for Phase 2.";
             } else if (newStatus === 'Rejected') {
-                subject = "Application Status Update - Kodekar Hackathon";
+                subject = "Application Status Update - Codekarx Hackathon";
                 customMessage = "We regret to inform you that your project has been rejected.";
             } else {
                 subject = "Application Status Update";
                 customMessage = `Your status has been updated to: ${newStatus}`;
             }
 
-            const body = `Hi ${identifier},\n\n${customMessage}\n\n${newRemarks ? `HR Remarks: ${newRemarks}\n\n` : ''}Best Regards,\nKodekar HR Team`;
+            const body = `Hi ${identifier},\n\n${customMessage}\n\n${newRemarks ? `HR Remarks: ${newRemarks}\n\n` : ''}Best Regards,\nCodekarx HR Team`;
             
             try {
                 GmailApp.sendEmail(candidateEmail, subject, body, { from: "anjali.patel@unaitech.com" });
@@ -226,8 +226,8 @@ function handleRequest(payload) {
                  const file = candidateFolder.createFile(blob);
                  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
              }
-             const subject = "Phase 1 Submission Received - Kodekar Hackathon";
-             const body = `Hi ${identifier},\n\nWe have successfully received your project description and presentation for Phase 1. Your unique code is ${data.registrationId}.\n\nGood luck,\nKodekar HR Team`;
+             const subject = "Phase 1 Submission Received - Codekarx Hackathon";
+             const body = `Hi ${identifier},\n\nWe have successfully received your project description and presentation for Phase 1. Your unique code is ${data.registrationId}.\n\nGood luck,\nCodekarx HR Team`;
              
              try {
                  GmailApp.sendEmail(candidateEmail, subject, body, {
@@ -305,8 +305,8 @@ function handleRequest(payload) {
                     : rawData[i][headers.indexOf("teamLeaderEmail")];
                 
                 if (candidateEmail) {
-                    const subject = "Phase 1 Submission Received - Kodekar Hackathon";
-                    const body = `Hi ${identifier},\n\nWe have successfully received your project description and presentation for Phase 1. Your unique code is ${data.registrationId}.\n\nGood luck,\nKodekar HR Team`;
+                    const subject = "Phase 1 Submission Received - Codekarx Hackathon";
+                    const body = `Hi ${identifier},\n\nWe have successfully received your project description and presentation for Phase 1. Your unique code is ${data.registrationId}.\n\nGood luck,\nCodekarx HR Team`;
                     
                     try {
                         GmailApp.sendEmail(candidateEmail, subject, body, {

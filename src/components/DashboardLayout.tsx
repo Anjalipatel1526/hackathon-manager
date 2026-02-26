@@ -38,7 +38,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                 alt="Logo"
                 className="h-9 w-9 rounded-lg object-cover shadow-sm"
               />
-              <span className="text-sm font-bold text-sidebar-foreground uppercase tracking-tight">Kodekar Hackathon</span>
+              <span className="text-sm font-bold text-sidebar-foreground uppercase tracking-tight">Codekarx Hackathon</span>
             </div>
 
             <SidebarGroup>

@@ -80,7 +80,7 @@ export const sendStatusUpdateEmail = async (email, name, status, remarks = '') =
     const htmlContent = `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; rounded: 12px; overflow: hidden;">
             <div style="background-color: #4f46e5; padding: 20px; text-align: center;">
-                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Kodekar Hackathon</h1>
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Codekarx Hackathon</h1>
             </div>
             <div style="padding: 30px; background-color: #ffffff;">
                 <h2 style="color: #1e293b; margin-top: 0;">Hello ${name},</h2>
@@ -103,13 +103,13 @@ export const sendStatusUpdateEmail = async (email, name, status, remarks = '') =
                 <p style="font-size: 14px; color: #64748b; margin-bottom: 0;">If you have any questions, feel free to reach out to our support team.</p>
             </div>
             <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
-                <p style="margin: 0; font-size: 12px; color: #94a3b8;">&copy; 2026 Kodekar Hackathon HR Team. All rights reserved.</p>
+                <p style="margin: 0; font-size: 12px; color: #94a3b8;">&copy; 2026 Codekarx Hackathon HR Team. All rights reserved.</p>
             </div>
         </div>
     `;
 
     const mailOptions = {
-        from: `"Kodekar HR Team" <${process.env.SMTP_USER}>`,
+        from: `"Codekarx HR Team" <${process.env.SMTP_USER}>`,
         to: email,
         subject: subject,
         html: htmlContent,

@@ -46,7 +46,7 @@ const CandidateForm = () => {
   const [fetchingData, setFetchingData] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showCodePopup, setShowCodePopup] = useState(false); // Controlled by effect
-  const [regIdInput, setRegIdInput] = useState(() => localStorage.getItem("kodekar_reg_id") || "");
+  const [regIdInput, setRegIdInput] = useState(() => localStorage.getItem("codekarx_reg_id") || "");
   const { toast } = useToast();
 
   // Form State
@@ -121,7 +121,7 @@ const CandidateForm = () => {
         }
 
         setShowCodePopup(false);
-        localStorage.setItem("kodekar_reg_id", regIdInput);
+        localStorage.setItem("codekarx_reg_id", regIdInput);
         toast({ title: "Portal Authenticated", description: "Your project details have been loaded." });
       }
     } catch (err: any) {
@@ -156,7 +156,7 @@ const CandidateForm = () => {
         setPhase(currentGlobalPhase.toString() as "1" | "2");
 
         // Always authenticate
-        if (!localStorage.getItem("kodekar_reg_id")) {
+        if (!localStorage.getItem("codekarx_reg_id")) {
           setShowCodePopup(true);
         }
       } catch (error) {
@@ -167,7 +167,7 @@ const CandidateForm = () => {
   }, []);
 
   const handleClearSession = () => {
-    localStorage.removeItem("kodekar_reg_id");
+    localStorage.removeItem("codekarx_reg_id");
     setRegIdInput("");
     setFormData({
       firstName: "",
@@ -331,7 +331,7 @@ const CandidateForm = () => {
       <div className="mx-auto max-w-3xl">
         <div className="mb-10 text-center space-y-2">
           <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-6xl italic uppercase italic underline decoration-indigo-500 decoration-8 underline-offset-8">
-            KODEKAR UPLOAD
+            CODEKARX UPLOAD
           </h1>
           <p className="text-lg text-slate-600 font-medium">Submit your project prototypes and final solutions</p>
         </div>
@@ -537,7 +537,7 @@ const CandidateForm = () => {
         </Card>
 
         <p className="text-center mt-12 text-slate-500 text-sm">
-          Protected by Kodekar Security • © 2026 Kodekar Hackathon
+          Protected by Codekarx Security • © 2026 Codekarx Hackathon
         </p>
       </div>
     </div>

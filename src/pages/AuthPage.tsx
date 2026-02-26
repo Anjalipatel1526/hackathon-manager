@@ -40,7 +40,7 @@ const AuthPage = () => {
             await signIn(normalizedEmail, "hr", isKomall ? "HR Admin" : "System Admin");
             navigate("/admin");
         } else {
-            toast({ title: "Login failed", description: "Invalid Kodekar credentials", variant: "destructive" });
+            toast({ title: "Login failed", description: "Invalid Codekarx credentials", variant: "destructive" });
         }
         setLoading(false);
     };
@@ -56,7 +56,7 @@ const AuthPage = () => {
                             className="h-full w-full object-cover rounded-xl shadow-md"
                         />
                     </div>
-                    <CardTitle className="text-2xl font-bold">Kodekar Admin Login</CardTitle>
+                    <CardTitle className="text-2xl font-bold">Codekarx Admin Login</CardTitle>
                     <CardDescription>Secure Access for Hackathon Management</CardDescription>
                 </CardHeader>
 
@@ -85,7 +85,7 @@ const AuthPage = () => {
                     </CardContent>
                     <CardFooter className="flex flex-col gap-3">
                         <Button type="submit" className="w-full" disabled={loading} size="lg">
-                            {loading ? "Signing in..." : "Kodekar Sign In"}
+                            {loading ? "Signing in..." : "Codekarx Sign In"}
                         </Button>
                         <Button variant="ghost" onClick={() => navigate("/")} className="text-xs text-muted-foreground hover:bg-transparent hover:text-primary transition-colors">
                             Back to Application Form

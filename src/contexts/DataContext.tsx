@@ -15,7 +15,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 export const GlobalDataProvider = ({ children }: { children: React.ReactNode }) => {
     const [cachedData, setCachedData] = useState<any[]>(() => {
         try {
-            const saved = localStorage.getItem("kodekar_candidates_cache");
+            const saved = localStorage.getItem("codekarx_candidates_cache");
             return saved ? JSON.parse(saved) : [];
         } catch (e) {
             return [];
@@ -26,7 +26,7 @@ export const GlobalDataProvider = ({ children }: { children: React.ReactNode }) 
         queryKey: ["applications"],
         queryFn: async () => {
             const data = await candidateApi.getAllApplications();
-            localStorage.setItem("kodekar_candidates_cache", JSON.stringify(data));
+            localStorage.setItem("codekarx_candidates_cache", JSON.stringify(data));
             setCachedData(data);
             return data;
         },
@@ -42,7 +42,7 @@ export const GlobalDataProvider = ({ children }: { children: React.ReactNode }) 
 
     const updateLocalCache = (newData: any[]) => {
         setCachedData(newData);
-        localStorage.setItem("kodekar_candidates_cache", JSON.stringify(newData));
+        localStorage.setItem("codekarx_candidates_cache", JSON.stringify(newData));
     };
 
     const value = useMemo(() => ({
