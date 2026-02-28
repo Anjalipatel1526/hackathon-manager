@@ -1,145 +1,140 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://script.google.com/macros/s/AKfycbwaUeJtbFqZaS75k0CCDZu9_XC7Ue59UxRP_iwFfyMaWVnpJKFBDcTQYX5TmD4PLGUcUw/exec';
-const NODE_API_URL = 'http://localhost:5000/api'; // Or use a relative path /api if same domain
+// Get URL and log it for debugging
+const VITE_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = VITE_URL.trim();
+
+console.log("DEBUG: Initializing API with URL:", `"${API_BASE_URL}"`);
+
+if (!API_BASE_URL) {
+    console.error("CRITICAL: No API URL found in .env! Please check VITE_GOOGLE_SCRIPT_URL.");
+}
 
 export const candidateApi = {
     submitPhase1: async (payload) => {
-        const response = await fetch(API_BASE_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'submit_phase1', ...payload }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const data = await response.json();
-        if (data.result === 'error') throw new Error(data.error);
-        return data.data;
+        try {
+            console.log("Submitting Phase 1 to:", API_BASE_URL);
+            console.log("Payload keys:", Object.keys(payload.data || {}));
+            if (payload.files) console.log("Files keys:", Object.keys(payload.files));
+
+            const response = await fetch(API_BASE_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'submit_phase1', ...payload }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+
+            if (!response.ok) {
+                console.error("HTTP Error:", response.status, response.statusText);
+                throw new Error(`HTTP Error ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.result === 'error') throw new Error(data.error);
+            return data;
+        } catch (error: any) {
+            console.error("Detailed Submission Error:", error);
+            if (error.message === 'Failed to fetch') {
+                throw new Error(`Failed to connect to Google Script. Verify this URL is reachable and deployed as 'Anyone': ${API_BASE_URL}`);
+            }
+            throw error;
+        }
     },
 
     getApplicationByRegId: async (regId) => {
-        if (regId === '12345') {
-            return {
-                registrationId: "12345",
-                firstName: "Anjali",
-                lastName: "",
-                email: "komallarna06@gmail.com",
-                phone: "0000000000",
-                department: "AI Agent and Automation",
-                collegeCompany: "Demo University",
-                registrationType: "Individual",
-                phase1: {
-                    projectDescription: "This is a mock project description for Anjali."
-                },
-                phase2: {
-                    githubRepoLink: "https://github.com/anjali/mock-repo"
-                }
-            };
+        try {
+            const response = await fetch(API_BASE_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'get_application_by_regid', data: { registrationId: regId } }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            const data = await response.json();
+            if (data.result === 'error') throw new Error(data.error);
+            return data.data;
+        } catch (error) {
+            console.error("Fetch Application Error:", error);
+            throw error;
         }
-
-        if (regId === '123') {
-            return {
-                registrationId: "123",
-                firstName: "Test",
-                lastName: "User",
-                email: "test@example.com",
-                registrationType: "Individual",
-                phase1: {
-                    projectDescription: "Phase 1 complete."
-                }
-            };
-        }
-
-        const response = await fetch(API_BASE_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'get_application_by_regid', data: { registrationId: regId } }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const data = await response.json();
-        if (data.result === 'error') throw new Error(data.error);
-        return data.data;
     },
 
     submitPhase2: async (payload) => {
-        const response = await fetch(API_BASE_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'submit_phase2', ...payload }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const data = await response.json();
-        if (data.result === 'error') throw new Error(data.error);
-        return data.data;
+        try {
+            console.log("Submitting Phase 2 to:", API_BASE_URL);
+            const response = await fetch(API_BASE_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'submit_phase2', ...payload }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            const data = await response.json();
+            if (data.result === 'error') throw new Error(data.error);
+            return data;
+        } catch (error: any) {
+            console.error("Phase 2 Error:", error);
+            throw error;
+        }
     },
 
     getAllApplications: async () => {
-        const response = await fetch(API_BASE_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'get_applications' }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const data = await response.json();
-        if (data.result === 'error') throw new Error(data.error);
-
-        const apps = data.data || [];
-
-        // Inject mock "12345" data so it appears in Admin Dashboards
-        if (!apps.find((a: any) => a.registrationId === '12345' || a.registrationId === 12345)) {
-            apps.push({
-                _id: "12345",
-                registrationId: "12345",
-                firstName: "Anjali",
-                lastName: "(Mock Candidate)",
-                email: "komallarna06@gmail.com",
-                phone: "0000000000",
-                department: "AI Agent and Automation",
-                collegeCompany: "Demo University",
-                registrationType: "Individual",
-                status: "Pending",
-                projectDescription: "This is a mock project description for testing purposes.",
-                descriptionUrl: "https://docs.google.com/document/d/mock-link",
-                pptUrl: "https://docs.google.com/presentation/d/mock-link",
-                phase1SubmittedAt: new Date().toISOString(),
-                githubRepoLink: "https://github.com/mock/repo",
-                githubUrl: "https://docs.google.com/document/d/mock-link-gh",
-                readmeUrl: "https://drive.google.com/file/d/mock-link-readme",
-                finalProjectZipUrl: "https://drive.google.com/file/d/mock-link-zip",
-                phase2SubmittedAt: new Date().toISOString(),
-                isCompleted: true
+        try {
+            console.log("Fetching all applications from:", API_BASE_URL);
+            const response = await fetch(API_BASE_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'get_applications' }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
             });
+            const data = await response.json();
+            if (data.result === 'error') throw new Error(data.error);
+            return data.data || [];
+        } catch (error) {
+            console.error("Get Applications Error:", error);
+            return [];
         }
-
-        return apps;
     },
 
     updateStatus: async (id, status, remarks?: string) => {
-        const response = await fetch(API_BASE_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'update_status', data: { id, status, remarks } }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-
-        const data = await response.json();
-        if (data.result === 'error') throw new Error(data.error);
-        return { _id: id, status, remarks };
+        try {
+            const response = await fetch(API_BASE_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'update_status', data: { id, status, remarks } }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            const data = await response.json();
+            if (data.result === 'error') throw new Error(data.error);
+            return { _id: id, status, remarks };
+        } catch (error) {
+            console.error("Update Status Error:", error);
+            throw error;
+        }
     },
 
     getPhase: async () => {
-        const response = await fetch(API_BASE_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'get_phase' }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const data = await response.json();
-        if (data.result === 'error') throw new Error(data.error);
-        return data.phase;
+        try {
+            const response = await fetch(API_BASE_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'get_phase' }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            const data = await response.json();
+            if (data.result === 'error') throw new Error(data.error);
+            return data.phase;
+        } catch (error) {
+            // console.error("Get Phase Error:", error);
+            return 1;
+        }
     },
 
     updatePhase: async (phase: number) => {
-        const response = await fetch(API_BASE_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'update_phase', data: { currentPhase: phase } }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const data = await response.json();
-        if (data.result === 'error') throw new Error(data.error);
-        return data.phase;
+        try {
+            const response = await fetch(API_BASE_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'update_phase', data: { currentPhase: phase } }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            const data = await response.json();
+            if (data.result === 'error') throw new Error(data.error);
+            return data.phase;
+        } catch (error) {
+            console.error("Update Phase Error:", error);
+            throw error;
+        }
     }
 };

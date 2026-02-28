@@ -64,6 +64,8 @@ interface TeamMember {
 interface Candidate {
   _id: string;
   registrationId: string;
+  transactionId: string;
+  projectName: string;
   registrationType: 'Individual' | 'Team';
   track: string;
   status: 'Pending' | 'Approved' | 'Rejected';
@@ -80,11 +82,15 @@ interface Candidate {
   teamName?: string;
   teamLeaderName?: string;
   teamLeaderEmail?: string;
+  member1Email?: string;
+  member2Email?: string;
+  member3Email?: string;
+  member4Email?: string;
   teamMembers?: TeamMember[];
 
   phase1?: {
     projectDescription: string;
-    descriptionUrl?: string; // New field
+    descriptionUrl?: string;
     pptUrl?: string;
     submittedAt: string;
   };
@@ -131,10 +137,27 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
   const filtered = useMemo(() => candidates.filter((c: Candidate) => {
     const name = c.registrationType === 'Individual' ? `${c.firstName} ${c.lastName}` : c.teamName || '';
     const email = (c.registrationType === 'Individual' ? c.email : c.teamLeaderEmail) || '';
+    const projectName = c.projectName || '';
+    const transId = c.transactionId || '';
 
-    const matchesSearch = name.toLowerCase().includes(search.toLowerCase()) || email.toLowerCase().includes(search.toLowerCase()) || c.registrationId.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch =
+      name.toLowerCase().includes(search.toLowerCase()) ||
+      email.toLowerCase().includes(search.toLowerCase()) ||
+      c.registrationId.toLowerCase().includes(search.toLowerCase()) ||
+      projectName.toLowerCase().includes(search.toLowerCase()) ||
+      transId.toLowerCase().includes(search.toLowerCase());
+
     const matchesTrack = trackFilter === "All" || c.track === trackFilter;
-    const matchesStatus = !filterStatus || c.status === filterStatus;
+
+    // STRICT FILTER: If filterStatus is "Pending", ONLY show those with "Pending" or empty status.
+    // If filterStatus is provided, IT MUST MATCH.
+    let matchesStatus = true;
+    if (filterStatus === "Pending") {
+      matchesStatus = !c.status || c.status === "Pending";
+    } else if (filterStatus) {
+      matchesStatus = c.status === filterStatus;
+    }
+
     return matchesSearch && matchesTrack && matchesStatus;
   }), [candidates, search, trackFilter, filterStatus]);
 
@@ -239,7 +262,10 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
                   <TableRow key={c._id} className="hover:bg-slate-50/50 transition-colors">
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-mono text-[10px] text-indigo-600 font-bold">{c.registrationId}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] text-indigo-600 font-bold">{c.transactionId || c.registrationId}</span>
+                          {c.projectName && <Badge className="text-[9px] bg-indigo-50 text-indigo-700 h-4 border-none">{c.projectName}</Badge>}
+                        </div>
                         <span className="font-semibold text-slate-900">
                           {c.registrationType === 'Individual' ? `${c.firstName} ${c.lastName}` : c.teamName}
                         </span>

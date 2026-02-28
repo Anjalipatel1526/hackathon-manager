@@ -51,8 +51,8 @@ const CandidateForm = () => {
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
   const [submitted, setSubmitted] = useState(() => localStorage.getItem("codekarx_cached_submitted") === "true");
-  const [showCodePopup, setShowCodePopup] = useState(false); // Controlled by effect
-  const [regIdInput, setRegIdInput] = useState(() => localStorage.getItem("codekarx_reg_id") || "");
+  const [teamSize, setTeamSize] = useState<number>(2);
+  const [files, setFiles] = useState<Record<string, File | null>>({});
   const { toast } = useToast();
 
   // Form State
@@ -77,22 +77,15 @@ const CandidateForm = () => {
       teamLeaderEmail: "",
       projectDescription: "",
       githubRepoLink: "",
-      registrationId: "", // For Phase 2
+      registrationId: "",
+      transactionId: "",
+      projectName: "",
+      member1Email: "",
+      member2Email: "",
+      member3Email: "",
+      member4Email: "",
     };
   });
-
-  const [teamMembers, setTeamMembers] = useState(() => {
-    const saved = localStorage.getItem("codekarx_cached_team_members");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse cached team members");
-      }
-    }
-    return [{ name: "", email: "" }];
-  });
-  const [files, setFiles] = useState<Record<string, File | null>>({});
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -102,102 +95,71 @@ const CandidateForm = () => {
     setFiles((prev) => ({ ...prev, [key]: file }));
   };
 
-  const addTeamMember = () => {
-    setTeamMembers([...teamMembers, { name: "", email: "" }]);
-  };
-
-  const handleTeamMemberChange = (index: number, field: "name" | "email", value: string) => {
-    const updated = [...teamMembers];
-    updated[index][field] = value;
-    setTeamMembers(updated);
-  };
-
-  const handleFetchData = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!regIdInput.trim()) return;
-
+  // Logic to fetch registration details by Transaction ID (for Phase 2 resume)
+  const handleFetchByTransactionId = async (id: string) => {
+    if (!id || id.length < 5) return;
     setFetchingData(true);
     try {
-
-      const data = await candidateApi.getApplicationByRegId(regIdInput.trim());
+      const data = await candidateApi.getApplicationByRegId(id);
       if (data) {
+        // Sync registration type and form data
         if (data.registrationType) {
           setRegType(data.registrationType);
           localStorage.setItem("codekarx_reg_type", data.registrationType);
         }
-        if (data.teamMembers) {
-          setTeamMembers(data.teamMembers);
-          localStorage.setItem("codekarx_cached_team_members", JSON.stringify(data.teamMembers));
-        }
-
-        let isSubmitted = false;
-        // Auto switch to phase 2 if phase 1 is completed
-        if (data.phase1?.projectDescription) {
-          if (globalPhase === 1) {
-            isSubmitted = true;
-          } else if (globalPhase === 2) {
-            if (data.phase2?.githubRepoLink) {
-              isSubmitted = true;
-            }
-            setPhase("2");
-          }
-        } else if (globalPhase === 2) {
-          setPhase("2");
-        }
-
-        setSubmitted(isSubmitted);
-        localStorage.setItem("codekarx_cached_submitted", isSubmitted.toString());
-
-        setShowCodePopup(false);
-        localStorage.setItem("codekarx_reg_id", regIdInput);
 
         const newFormData = {
           ...formData,
           firstName: data.firstName || "",
           lastName: data.lastName || "",
-          email: data.email || data.teamLeaderEmail || "",
+          email: data.email || "",
           phone: data.phone || "",
           department: data.department || "",
           collegeCompany: data.collegeCompany || "",
           teamName: data.teamName || "",
           teamLeaderName: data.teamLeaderName || "",
           teamLeaderEmail: data.teamLeaderEmail || "",
-          projectDescription: data.phase1?.projectDescription || "",
-          githubRepoLink: data.phase2?.githubRepoLink || "",
-          registrationId: data.registrationId,
+          projectDescription: data.projectDescription || "",
+          githubRepoLink: data.githubRepoLink || "",
+          registrationId: data.registrationId || data.transactionId,
+          transactionId: data.transactionId || id,
+          projectName: data.projectName || "",
+          member1Email: data.member1Email || "",
+          member2Email: data.member2Email || "",
+          member3Email: data.member3Email || "",
+          member4Email: data.member4Email || "",
         };
 
         setFormData(newFormData);
         localStorage.setItem("codekarx_cached_form_data", JSON.stringify(newFormData));
 
-        if (e) {
-          toast({ title: "Portal Authenticated", description: "Your project details have been loaded." });
+        // Check if already submitted for current phase
+        if (globalPhase === 1 && data.projectDescription) {
+          setSubmitted(true);
+          localStorage.setItem("codekarx_cached_submitted", "true");
+        } else if (globalPhase === 2 && data.githubRepoLink) {
+          setSubmitted(true);
+          localStorage.setItem("codekarx_cached_submitted", "true");
         }
+
+        toast({ title: "Registration Loaded", description: `Found project: ${data.projectName}` });
       }
-      // Only show error if explicitly submitted via button or if input length is sufficient
-      if (e || regIdInput.length >= 10) {
-        toast({
-          title: "Invalid Code",
-          description: "Could not find registration with this code. Please try again.",
-          variant: "destructive"
-        });
-      }
+    } catch (err) {
+      console.warn("No existing registration found for this ID yet.");
     } finally {
       setFetchingData(false);
     }
   };
 
-  // Automatic fetch when code is entered or on mount if code exists
+  // Watch transactionId for resume logic
   useEffect(() => {
-    const checkAndFetch = async () => {
-      // If we have a regId but no data yet, fetch immediately (visible)
-      // If we have both, fetch in background (silent)
-      if (regIdInput.length >= 5) {
-        await handleFetchData();
+    const timer = setTimeout(() => {
+      if (formData.transactionId && !submitted) {
+        handleFetchByTransactionId(formData.transactionId);
       }
-    };
-    checkAndFetch();
-  }, [regIdInput]);
+    }, 1500); // 1.5s debounce
+    return () => clearTimeout(timer);
+  }, [formData.transactionId]);
 
   useEffect(() => {
     const initPhase = async () => {
@@ -206,11 +168,6 @@ const CandidateForm = () => {
         setGlobalPhase(currentGlobalPhase);
         localStorage.setItem("codekarx_global_phase", currentGlobalPhase.toString());
         setPhase(currentGlobalPhase.toString() as "1" | "2");
-
-        // Always authenticate
-        if (!localStorage.getItem("codekarx_reg_id")) {
-          setShowCodePopup(true);
-        }
       } catch (error) {
         console.error("Failed to load Phase");
       }
@@ -224,7 +181,6 @@ const CandidateForm = () => {
     localStorage.removeItem("codekarx_cached_submitted");
     localStorage.removeItem("codekarx_cached_team_members");
     localStorage.removeItem("codekarx_reg_type");
-    setRegIdInput("");
     setFormData({
       firstName: "",
       lastName: "",
@@ -238,13 +194,18 @@ const CandidateForm = () => {
       projectDescription: "",
       githubRepoLink: "",
       registrationId: "",
+      transactionId: "",
+      projectName: "",
+      member1Email: "",
+      member2Email: "",
+      member3Email: "",
+      member4Email: "",
     });
     setFiles({ ppt: null, readme: null, finalZip: null });
     setPhase("1");
     setRegType("Individual");
-    setTeamMembers([]);
-    setShowCodePopup(true);
-    toast({ title: "Session Cleared", description: "You have been signed out of this session." });
+    setSubmitted(false);
+    toast({ title: "Session Cleared", description: "You have been signed out." });
   };
 
   const getSanitizedIdentity = () => {
@@ -252,30 +213,30 @@ const CandidateForm = () => {
       ? `${formData.firstName} ${formData.lastName}`.trim()
       : formData.teamName;
     const email = regType === 'Individual' ? formData.email : formData.teamLeaderEmail;
-    // Replace spaces and special characters with underscores, keeping dots and @ for email
     const identity = `${name}_${email}`.replace(/[^a-zA-Z0-9.@_-]/g, '_');
     return identity;
   };
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Auth requirement strict for everyone
-    if (!formData.registrationId) {
-      toast({ title: "Authentication Required", description: "Please enter your unique code first.", variant: "destructive" });
+    if (!formData.transactionId) {
+      toast({ title: "Validation Error", description: "Transaction ID is mandatory.", variant: "destructive" });
+      return;
+    }
+
+    if (!formData.projectName) {
+      toast({ title: "Validation Error", description: "Project Name is mandatory.", variant: "destructive" });
       return;
     }
 
     setLoading(true);
     try {
+      const identity = getSanitizedIdentity();
       if (globalPhase === 1) {
-        const identity = getSanitizedIdentity();
         const payload: any = {
-          data: {
-            registrationId: formData.registrationId,
-            projectDescription: formData.projectDescription,
-            candidateIdentity: identity,
-          },
+          data: { ...formData, candidateIdentity: identity },
           files: {}
         };
         if (files.ppt) {
@@ -284,16 +245,15 @@ const CandidateForm = () => {
           payload.files.ppt = fileData;
         }
 
-        await candidateApi.submitPhase1(payload);
+        const res = await candidateApi.submitPhase1(payload);
         setSubmitted(true);
         localStorage.setItem("codekarx_cached_submitted", "true");
-        toast({ title: "Upload Successful", description: "Your phase 1 project details have been updated." });
+        toast({ title: "Registration Successful", description: `Registration ID: ${res.registrationId || formData.transactionId}` });
       } else {
-        // Phase 2 Submission
-        const identity = getSanitizedIdentity();
+        // Phase 2
         const payload: any = {
           data: {
-            registrationId: formData.registrationId,
+            registrationId: formData.registrationId || formData.transactionId,
             githubRepoLink: formData.githubRepoLink,
             candidateIdentity: identity,
           },
@@ -313,12 +273,10 @@ const CandidateForm = () => {
         await candidateApi.submitPhase2(payload);
         setSubmitted(true);
         localStorage.setItem("codekarx_cached_submitted", "true");
-        toast({ title: "Upload Successful", description: "Your project files have been updated." });
+        toast({ title: "Phase 2 Successful", description: "Your files have been updated." });
       }
-
-      setSubmitted(true);
     } catch (err: any) {
-      toast({ title: "Submission Failed", description: err.response?.data?.error || err.message, variant: "destructive" });
+      toast({ title: "Submission Failed", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -333,19 +291,12 @@ const CandidateForm = () => {
             <h2 className="text-2xl font-bold text-slate-800">Submission Successful!</h2>
             <p className="text-slate-600 font-medium">
               {globalPhase === 1
-                ? "Your Phase 1 project has been received. Please wait for Phase 2 to begin."
+                ? "Your registration has been received. Please wait for the HR team to approve your project."
                 : "Your final project has been received and is under review. All the best!"}
             </p>
-            <p className="text-xs text-slate-400 mt-4">
-              You will receive email updates regarding your submission status from the HR team.
-            </p>
             <div className="pt-6">
-              <Button
-                variant="outline"
-                onClick={handleClearSession}
-                className="rounded-xl border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all font-bold text-xs"
-              >
-                SWITCH ACCOUNT
+              <Button variant="outline" onClick={handleClearSession} className="rounded-xl border-slate-200 text-slate-500 font-bold">
+                SUBMIT ANOTHER RESPONSE
               </Button>
             </div>
           </CardContent>
@@ -355,259 +306,188 @@ const CandidateForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-indigo-950/20 backdrop-blur-sm bg-gradient-to-br from-slate-50 to-indigo-50 py-12 px-4">
-      {/* Unique Code Popup */}
-      <Dialog open={showCodePopup} onOpenChange={setShowCodePopup}>
-        <DialogContent className="sm:max-w-md border-none p-0 overflow-hidden rounded-3xl shadow-2xl">
-          <div className="bg-indigo-600 p-8 text-white relative">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <Upload className="h-24 w-24" />
-            </div>
-            <DialogHeader>
-              <DialogTitle className="text-3xl font-black italic tracking-tighter">PROJECT UPLOAD PORTAL</DialogTitle>
-              <DialogDescription className="text-indigo-100 mt-2 font-medium">
-                Enter your unique code to authenticate and access the submission portal.
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-          <form onSubmit={handleFetchData} className="p-8 space-y-6 bg-white">
-            <div className="space-y-2">
-              <Label htmlFor="regId" className="text-slate-700 font-semibold">Unique Registration Code</Label>
-              <Input
-                id="regId"
-                placeholder="e.g. REG-123456"
-                value={regIdInput}
-                onChange={(e) => setRegIdInput(e.target.value)}
-                className="h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500"
-                required
-              />
-              <p className="text-xs text-slate-500 italic">This code was provided to you during your initial signup.</p>
-            </div>
-            <Button
-              type="submit"
-              className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg"
-              disabled={fetchingData}
-            >
-              {fetchingData ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Fetching Your Data...
-                </>
-              ) : "Access My Registration"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 py-12 px-4">
       <div className="mx-auto max-w-3xl">
         <div className="mb-10 text-center space-y-2">
-          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-6xl italic uppercase italic underline decoration-indigo-500 decoration-8 underline-offset-8">
-            CODEKARX UPLOAD
+          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-6xl italic uppercase underline decoration-indigo-500 decoration-8 underline-offset-8">
+            CODEKARX REGISTRATION
           </h1>
-          <p className="text-lg text-slate-600 font-medium">Submit your project prototypes and final solutions</p>
+          <p className="text-lg text-slate-600 font-medium">Overhauled registration portal for Phase 1 & 2</p>
         </div>
 
-        {/* Tabs removed to focus on unified submission for authenticated users */}
-
         <Card className="shadow-2xl border-none bg-white rounded-3xl overflow-hidden ring-1 ring-slate-200">
-          <CardHeader className="bg-indigo-600 text-white p-8">
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-2xl font-bold flex items-center gap-3">
-                  <Upload className="h-6 w-6" /> {globalPhase === 1 ? "Phase 1 Submission Portal" : "Phase 2 Submission Portal"}
-                </CardTitle>
-                <CardDescription className="text-indigo-100">
-                  Authenticated Access: Proceed with uploading your project documentation and files.
-                </CardDescription>
+          <CardHeader className="bg-indigo-600 text-white p-8 relative">
+            {fetchingData && (
+              <div className="absolute top-4 right-8 flex items-center gap-2 bg-indigo-500 px-3 py-1 rounded-full animate-pulse border border-indigo-400">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white">Checking...</span>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClearSession}
-                className="bg-indigo-500/20 border-indigo-400/30 text-white hover:bg-white hover:text-indigo-600 text-[10px] font-bold h-7 rounded-lg transition-all"
-              >
-                SWITCH ACCOUNT
-              </Button>
-            </div>
+            )}
+            <CardTitle className="text-2xl font-bold flex items-center gap-3">
+              <Upload className="h-6 w-6" /> {globalPhase === 1 ? "Phase 1 Registration" : "Phase 2 Submission"}
+            </CardTitle>
+            <CardDescription className="text-indigo-100 italic">Enter your Transaction ID to resume an existing registration.</CardDescription>
           </CardHeader>
 
-          <form onSubmit={handleSubmit} className="relative">
-            {fetchingData && !showCodePopup && !formData.registrationId && (
-              <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center rounded-b-3xl">
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
-                  <p className="text-indigo-900 font-bold animate-pulse">Syncing Registration Data...</p>
+          <form onSubmit={handleSubmit} className="p-8 space-y-8">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <Label>Registration Type</Label>
+                <RadioGroup
+                  defaultValue={regType}
+                  onValueChange={(v: any) => setRegType(v)}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Individual" id="Individual" />
+                    <Label htmlFor="Individual">Individual</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Team" id="Team" />
+                    <Label htmlFor="Team">Team</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="department">Select Track *</Label>
+                <Select value={formData.department} onValueChange={(v) => setFormData({ ...formData, department: v })}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Choose a tracking" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TRACKS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2 text-indigo-700">
+                <Label htmlFor="projectName" className="font-bold">Project Name *</Label>
+                <Input id="projectName" placeholder="Your Amazing Project" value={formData.projectName} onChange={handleInputChange} className="rounded-xl border-indigo-200" required />
+              </div>
+              <div className="space-y-2 text-indigo-700">
+                <Label htmlFor="transactionId" className="font-bold">Transaction ID * (Unique)</Label>
+                <Input id="transactionId" placeholder="TXN12345678" value={formData.transactionId} onChange={handleInputChange} className="rounded-xl border-indigo-200" required />
+              </div>
+            </div>
+
+            {regType === "Individual" ? (
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <Input id="firstName" value={formData.firstName} onChange={handleInputChange} className="rounded-xl" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input id="lastName" value={formData.lastName} onChange={handleInputChange} className="rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input id="email" type="email" value={formData.email} onChange={handleInputChange} className="rounded-xl" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input id="phone" value={formData.phone} onChange={handleInputChange} className="rounded-xl" />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="teamName">Team Name *</Label>
+                    <Input id="teamName" value={formData.teamName} onChange={handleInputChange} className="rounded-xl" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Member Count *</Label>
+                    <Select value={teamSize.toString()} onValueChange={(v) => setTeamSize(parseInt(v))}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="2">2 Members</SelectItem>
+                        <SelectItem value="3">3 Members</SelectItem>
+                        <SelectItem value="4">4 Members</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="teamLeaderEmail">Team Leader Email *</Label>
+                    <Input id="teamLeaderEmail" type="email" value={formData.teamLeaderEmail} onChange={handleInputChange} className="rounded-xl" required />
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {Array.from({ length: teamSize }).map((_, i) => (
+                      <div key={i} className="space-y-2">
+                        <Label htmlFor={`member${i + 1}Email`}>Member {i + 1} Email *</Label>
+                        <Input
+                          id={`member${i + 1}Email`}
+                          type="email"
+                          value={formData[`member${i + 1}Email` as keyof typeof formData]}
+                          onChange={handleInputChange}
+                          className="rounded-xl"
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
-            <CardContent className="p-8 space-y-8">
-              {/* Individual vs Team Selection */}
-              {!showCodePopup && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Participant Type</p>
-                    <div className="flex items-center gap-2">
-                      {regType === 'Individual' ? <User className="h-4 w-4 text-indigo-600" /> : <Users className="h-4 w-4 text-indigo-600" />}
-                      <span className="font-bold text-slate-700">{regType}</span>
-                    </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="collegeCompany">College / Company</Label>
+              <Input id="collegeCompany" value={formData.collegeCompany} onChange={handleInputChange} className="rounded-xl" />
+            </div>
+
+            {globalPhase === 1 ? (
+              <div className="space-y-6 border-t pt-8 border-slate-100">
+                <div className="space-y-2">
+                  <Label htmlFor="projectDescription">Project Description *</Label>
+                  <Textarea id="projectDescription" value={formData.projectDescription} onChange={handleInputChange} className="min-h-[150px] rounded-2xl" placeholder="Describe your idea briefly..." required />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 italic text-indigo-600 font-bold"><FileText className="h-4 w-4" /> Upload Project PPT *</Label>
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-indigo-100 border-dashed rounded-2xl hover:border-indigo-400 bg-indigo-50/20 cursor-pointer text-center">
+                    <label className="cursor-pointer w-full h-full">
+                      <Upload className="mx-auto h-12 w-12 text-indigo-400" />
+                      <span className="text-sm font-semibold text-indigo-600 mt-2 block">Choose File</span>
+                      <input type="file" className="sr-only" onChange={(e) => handleFileChange('ppt', e.target.files?.[0] || null)} required />
+                    </label>
                   </div>
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Track</p>
-                    <span className="font-bold text-slate-700">{formData.department || "Not Specified"}</span>
+                  {files.ppt && <p className="text-sm font-bold text-emerald-600 text-center">{files.ppt.name}</p>}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6 border-t pt-8 border-slate-100">
+                <div className="space-y-2">
+                  <Label htmlFor="githubRepoLink">GitHub Repository Link *</Label>
+                  <div className="relative">
+                    <Github className="absolute left-4 top-3 h-5 w-5 text-slate-400" />
+                    <Input id="githubRepoLink" value={formData.githubRepoLink} onChange={handleInputChange} className="pl-12 rounded-xl h-12" required />
                   </div>
                 </div>
-              )}
-
-              {/* Personal Details as Read-only Info */}
-              {!showCodePopup && (
-                <div className="p-6 bg-indigo-50/50 rounded-2xl border border-indigo-100">
-                  <h3 className="text-sm font-bold text-indigo-900 mb-4 flex items-center gap-2">
-                    <User className="h-4 w-4" /> Participant Identity
-                  </h3>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {regType === 'Individual' ? (
-                      <>
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Full Name</p>
-                          <p className="font-bold text-slate-800">{formData.firstName} {formData.lastName}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Contact Email</p>
-                          <p className="font-bold text-slate-800 italic underline">{formData.email}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Contact Phone</p>
-                          <p className="font-bold text-slate-800">{formData.phone || "N/A"}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">College / Company</p>
-                          <p className="font-bold text-slate-800">{formData.collegeCompany || "N/A"}</p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Team Name / Leader</p>
-                          <p className="font-bold text-slate-800">{formData.teamName} ({formData.teamLeaderName})</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Leader Email</p>
-                          <p className="font-bold text-slate-800 italic underline">{formData.teamLeaderEmail}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Contact Phone</p>
-                          <p className="font-bold text-slate-800">{formData.phone || "N/A"}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">College / Company</p>
-                          <p className="font-bold text-slate-800">{formData.collegeCompany || "N/A"}</p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-
-
-
-              {/* Phase 1 Fields */}
-              {globalPhase === 1 && (
-                <div className="space-y-6 border-t pt-8 border-slate-100">
-                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">1</div>
-                    Phase 1: Project Description
-                  </h3>
+                <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="projectDescription">Project Description *</Label>
-                    <Textarea
-                      id="projectDescription"
-                      placeholder="Briefly describe your project goals..."
-                      className="min-h-[150px] rounded-2xl"
-                      value={formData.projectDescription}
-                      onChange={handleInputChange}
-                      required
-                    />
+                    <Label>README File (PDF/DOC) *</Label>
+                    <Input type="file" onChange={(e) => handleFileChange('readme', e.target.files?.[0] || null)} className="rounded-xl h-12" required />
                   </div>
-
                   <div className="space-y-2">
-                    <Label className="block text-sm font-medium text-slate-700 items-center gap-2 flex">
-                      <FileText className="h-4 w-4 text-indigo-500" /> Upload Project PPT (PDF/PPT) *
-                    </Label>
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-indigo-100 border-dashed rounded-2xl hover:border-indigo-400 bg-indigo-50/30 transition-colors cursor-pointer group">
-                      <div className="space-y-1 text-center">
-                        <Upload className="mx-auto h-12 w-12 text-indigo-300 group-hover:text-indigo-500 transition-colors" />
-                        <div className="flex text-sm text-slate-600 justify-center">
-                          <label className="relative cursor-pointer bg-transparent rounded-md font-semibold text-indigo-600 hover:text-indigo-500">
-                            <span>Upload Phase 1 Files</span>
-                            <input type="file" className="sr-only" onChange={(e) => handleFileChange('ppt', e.target.files?.[0] || null)} />
-                          </label>
-                        </div>
-                        <p className="text-xs text-slate-500">PDF, PPTX up to 10MB</p>
-                        {files.ppt && <p className="text-sm font-bold text-emerald-600 mt-2 flex items-center justify-center gap-1"><CheckCircle2 className="h-4 w-4" /> {files.ppt.name}</p>}
-                      </div>
-                    </div>
+                    <Label>Final Project Zip (Optional)</Label>
+                    <Input type="file" onChange={(e) => handleFileChange('finalZip', e.target.files?.[0] || null)} className="rounded-xl h-12" />
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Phase 2 Fields */}
-              {(globalPhase === 2 && formData.registrationId) && (
-                <div className="space-y-6 border-t pt-8 border-slate-100">
-                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">2</div>
-                    Phase 2: Final Submission
-                  </h3>
-                  <div className="space-y-2">
-                    <Label htmlFor="githubRepoLink">GitHub Repository Link *</Label>
-                    <div className="relative">
-                      <Github className="absolute left-4 top-3 h-5 w-5 text-slate-400" />
-                      <Input
-                        id="githubRepoLink"
-                        placeholder="https://github.com/username/project"
-                        className="pl-12 rounded-xl h-12"
-                        value={formData.githubRepoLink}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label>README File (PDF/DOC) *</Label>
-                      <div className="flex items-center gap-4 p-4 border-2 border-slate-100 rounded-2xl hover:border-indigo-400 transition-colors cursor-pointer relative">
-                        <FileText className="h-8 w-8 text-indigo-600 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{files.readme ? files.readme.name : "Select README"}</p>
-                          <p className="text-xs text-slate-500">PDF or Word</p>
-                        </div>
-                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleFileChange('readme', e.target.files?.[0] || null)} required={!formData.githubRepoLink} />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Final Project Files (ZIP) - Optional</Label>
-                      <div className="flex items-center gap-4 p-4 border-2 border-slate-100 rounded-2xl hover:border-indigo-400 transition-colors cursor-pointer relative">
-                        <FileArchive className="h-8 w-8 text-indigo-600 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{files.finalZip ? files.finalZip.name : "Select ZIP archive"}</p>
-                          <p className="text-xs text-slate-500">Project source code</p>
-                        </div>
-                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleFileChange('finalZip', e.target.files?.[0] || null)} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <Button type="submit" className="w-full h-14 text-lg font-bold rounded-2xl shadow-xl shadow-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-all hover:-translate-y-1 active:scale-95" disabled={loading}>
-                {loading ? "Processing Submission..." : globalPhase === 1 ? "Submit Project Description" : "Complete Final Submission"}
-              </Button>
-            </CardContent>
+            <Button type="submit" className="w-full h-14 text-lg font-bold rounded-2xl shadow-xl bg-indigo-600 hover:bg-indigo-700 text-white" disabled={loading}>
+              {loading ? "Syncing..." : globalPhase === 1 ? "Complete Phase 1 Registration" : "Submit Final Project"}
+            </Button>
           </form>
         </Card>
-
-        <p className="text-center mt-12 text-slate-500 text-sm">
-          Protected by Codekarx Security • © 2026 Codekarx Hackathon
-        </p>
       </div>
     </div>
   );

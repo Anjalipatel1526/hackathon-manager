@@ -98,6 +98,8 @@ const Dashboard = () => {
 
     const statCards = useMemo(() => [
         { label: "Total Submissions", value: stats.total, icon: Layers, color: "from-indigo-500/10 to-indigo-500/5", iconColor: "text-indigo-600", path: "/admin/candidates" },
+        { label: "Individual Entries", value: stats.individualCount, icon: User, color: "from-blue-500/10 to-blue-500/5", iconColor: "text-blue-600", path: "/admin/candidates" },
+        { label: "Team Entries", value: stats.teamCount, icon: Users, color: "from-purple-500/10 to-purple-500/5", iconColor: "text-purple-600", path: "/admin/candidates" },
         { label: "Approved", value: stats.approvedCount, icon: CheckCircle, color: "from-emerald-500/10 to-emerald-500/5", iconColor: "text-emerald-600", path: "/admin/candidates" },
         { label: "Rejected", value: stats.rejectedCount, icon: RotateCw, color: "from-rose-500/10 to-rose-500/5", iconColor: "text-rose-600", path: "/admin/candidates" },
         { label: "Pending Review", value: stats.p1Pending, icon: Clock, color: "from-amber-500/10 to-amber-500/5", iconColor: "text-amber-600", path: "/admin/candidates" },
@@ -198,7 +200,7 @@ const Dashboard = () => {
             </AlertDialog>
 
             {/* Stats Grid */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 {statCards.map((s) => (
                     <Link key={s.label} to={s.path}>
                         <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 h-full group">
