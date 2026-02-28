@@ -1,0 +1,177 @@
+/**
+ * CODEKARX HACKATHON - CONSOLIDATED ZOHO BACKEND SCRIPT (DELUGE)
+ * For Phase 1 & Phase 2 Specific Folders for Individual/Team
+ * Includes: Status Updates (Approve/Reject) with HR Remarks and Email Notifications
+ */
+
+// This script is designed for Zoho Flow (Custom Function) or Zoho Creator (API)
+// Arguments: payload (Map)
+// Returns: String (JSON response)
+
+workbook_id = "YOUR_WORKBOOK_ID"; // Replace with your Zoho Sheet ID
+APP_SHEET_NAME = "Applications";
+SETTINGS_SHEET_NAME = "Settings";
+
+action = payload.get("action");
+data = payload.get("data");
+if(data == null) {
+    data = payload;
+}
+
+// --- ACTION: GET APPLICATIONS ---
+if(action == "get_applications") {
+    records = zoho.sheet.getRecords(workbook_id, APP_SHEET_NAME);
+    if(records == null) {
+        return {"result": "success", "data": List()}.toString();
+    }
+    return {"result": "success", "data": records}.toString();
+}
+
+// --- ACTION: GET APPLICATION BY REG ID ---
+if(action == "get_application_by_regid") {
+    regId = data.get("registrationId");
+    records = zoho.sheet.getRecords(workbook_id, APP_SHEET_NAME);
+    for each rec in records {
+        if(rec.get("registrationId").toString() == regId.toString()) {
+            return {"result": "success", "data": rec}.toString();
+        }
+    }
+    return {"result": "error", "error": "Candidate not found"}.toString();
+}
+
+// --- ACTION: GET/TOGGLE PHASE ---
+if(action == "get_phase") {
+    records = zoho.sheet.getRecords(workbook_id, SETTINGS_SHEET_NAME);
+    if(records == null || records.size() == 0) {
+        return {"result": "success", "phase": 1}.toString();
+    }
+    return {"result": "success", "phase": records.get(0).get("currentPhase").toLong()}.toString();
+}
+
+if(action == "update_phase") {
+    newPhase = data.get("currentPhase");
+    // In Zoho Sheets, we can set cell value directly for simple settings
+    zoho.sheet.setCellValue(workbook_id, SETTINGS_SHEET_NAME, "A2", newPhase);
+    return {"result": "success", "phase": newPhase}.toString();
+}
+
+// --- ACTION: UPDATE STATUS & SEND EMAIL ---
+if(action == "update_status") {
+    targetId = ifnull(data.get("id"), data.get("registrationId")).toString();
+    newStatus = data.get("status");
+    newRemarks = ifnull(data.get("remarks"), "");
+
+    records = zoho.sheet.getRecords(workbook_id, APP_SHEET_NAME);
+    found = false;
+    for each rec in records {
+        if(rec.get("registrationId").toString() == targetId) {
+            // Update Record
+            update_map = Map();
+            update_map.put("status", newStatus);
+            update_map.put("remarks", newRemarks);
+            
+            // Criteria for update: (registrationId == 'targetId')
+            criteria = "(registrationId == " + targetId + ")";
+            zoho.sheet.updateRecord(workbook_id, APP_SHEET_NAME, criteria, update_map);
+
+            // Email Notification
+            registrationType = ifnull(rec.get("registrationType"), "Individual");
+            identifier = "";
+            candidateEmail = "";
+
+            if(registrationType == "Individual") {
+                identifier = ifnull(rec.get("firstName"), "") + " " + ifnull(rec.get("lastName"), "");
+                candidateEmail = rec.get("email");
+            } else {
+                identifier = rec.get("teamName");
+                candidateEmail = rec.get("teamLeaderEmail");
+            }
+
+            if(candidateEmail != null && candidateEmail != "") {
+                subject = if(newStatus == "Approved", "Phase 1 Approved - Codekarx Hackathon", "Application Status Update - Codekarx Hackathon");
+                customMessage = if(newStatus == "Approved", "Your PPT is approved, please send your GitHub link and README file for Phase 2.", "We regret to inform you that your project session has been updated.");
+
+                body = "Hi " + identifier + ",\n\n" + customMessage + "\n\nStatus: " + newStatus + if(newRemarks != "", "\n\nHR Remarks: " + newRemarks, "") + "\n\nBest Regards,\nCodekarx HR Team";
+
+                sendmail
+                (
+                    from: "anjali.patel@unaitech.com"
+                    to: candidateEmail
+                    subject: subject
+                    message: body
+                )
+            }
+            found = true;
+            break;
+        }
+    }
+
+    if(found) {
+        return {"result": "success", "data": {"id": targetId, "status": newStatus, "remarks": newRemarks}}.toString();
+    }
+    
+    // Mock handling
+    if(targetId == "12345") {
+        return {"result": "success", "data": {"id": "12345", "status": newStatus, "remarks": newRemarks}}.toString();
+    }
+
+    return {"result": "error", "error": "Candidate not found"}.toString();
+}
+
+// --- ACTION: SUBMIT PHASE 1 ---
+if(action == "submit_phase1") {
+    regId = data.get("registrationId");
+    records = zoho.sheet.getRecords(workbook_id, APP_SHEET_NAME);
+    found = false;
+    for each rec in records {
+        if(rec.get("registrationId").toString() == regId.toString()) {
+            update_map = Map();
+            update_map.put("projectDescription", data.get("projectDescription"));
+            update_map.put("phase1SubmittedAt", zoho.currenttime.toString());
+            
+            // Note: Drive storage (PPT/Description file) requires Zoho WorkDrive setup
+            // For now, we update the sheet data
+            
+            criteria = "(registrationId == " + regId + ")";
+            zoho.sheet.updateRecord(workbook_id, APP_SHEET_NAME, criteria, update_map);
+            
+            // Email Notification (Simplified)
+            candidateEmail = if(rec.get("registrationType") == "Individual", rec.get("email"), rec.get("teamLeaderEmail"));
+            if(candidateEmail != null && candidateEmail != "") {
+                identifier = if(rec.get("registrationType") == "Individual", rec.get("firstName"), rec.get("teamName"));
+                subject = "Phase 1 Submission Received - Codekarx Hackathon";
+                body = "Hi " + identifier + ",\n\nWe have successfully received your project description for Phase 1. Your unique code is " + regId + ".\n\nGood luck,\nCodekarx HR Team";
+                sendmail(from:"anjali.patel@unaitech.com", to:candidateEmail, subject:subject, message:body)
+            }
+            found = true;
+            break;
+        }
+    }
+    if(found) { return {"result": "success", "message": "Phase 1 Updated"}.toString(); }
+    return {"result": "error", "error": "Candidate not found"}.toString();
+}
+
+// --- ACTION: SUBMIT PHASE 2 ---
+if(action == "submit_phase2") {
+    regId = data.get("registrationId");
+    records = zoho.sheet.getRecords(workbook_id, APP_SHEET_NAME);
+    found = false;
+    for each rec in records {
+        if(rec.get("registrationId").toString() == regId.toString()) {
+            update_map = Map();
+            update_map.put("githubRepoLink", data.get("githubRepoLink"));
+            update_map.put("phase2SubmittedAt", zoho.currenttime.toString());
+            update_map.put("isCompleted", true);
+            
+            criteria = "(registrationId == " + regId + ")";
+            zoho.sheet.updateRecord(workbook_id, APP_SHEET_NAME, criteria, update_map);
+            
+            found = true;
+            break;
+        }
+    }
+    if(found) { return {"result": "success", "message": "Phase 2 Updated"}.toString(); }
+    return {"result": "error", "error": "Candidate not found"}.toString();
+}
+
+return {"result": "error", "error": "Invalid action"}.toString();

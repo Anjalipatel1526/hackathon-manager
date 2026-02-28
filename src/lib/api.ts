@@ -26,6 +26,25 @@ export const candidateApi = {
                 department: "AI Agent and Automation",
                 collegeCompany: "Demo University",
                 registrationType: "Individual",
+                phase1: {
+                    projectDescription: "This is a mock project description for Anjali."
+                },
+                phase2: {
+                    githubRepoLink: "https://github.com/anjali/mock-repo"
+                }
+            };
+        }
+
+        if (regId === '123') {
+            return {
+                registrationId: "123",
+                firstName: "Test",
+                lastName: "User",
+                email: "test@example.com",
+                registrationType: "Individual",
+                phase1: {
+                    projectDescription: "Phase 1 complete."
+                }
             };
         }
 

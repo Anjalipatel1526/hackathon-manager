@@ -47,31 +47,51 @@ const CandidateForm = () => {
     const saved = localStorage.getItem("codekarx_global_phase");
     return (saved || "1") as "1" | "2";
   });
-  const [regType, setRegType] = useState<"Individual" | "Team">("Individual");
+  const [regType, setRegType] = useState<"Individual" | "Team">(() => (localStorage.getItem("codekarx_reg_type") as any) || "Individual");
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(() => localStorage.getItem("codekarx_cached_submitted") === "true");
   const [showCodePopup, setShowCodePopup] = useState(false); // Controlled by effect
   const [regIdInput, setRegIdInput] = useState(() => localStorage.getItem("codekarx_reg_id") || "");
   const { toast } = useToast();
 
   // Form State
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    department: "",
-    collegeCompany: "",
-    teamName: "",
-    teamLeaderName: "",
-    teamLeaderEmail: "",
-    projectDescription: "",
-    githubRepoLink: "",
-    registrationId: "", // For Phase 2
+  const [formData, setFormData] = useState(() => {
+    const saved = localStorage.getItem("codekarx_cached_form_data");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse cached form data");
+      }
+    }
+    return {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      department: "",
+      collegeCompany: "",
+      teamName: "",
+      teamLeaderName: "",
+      teamLeaderEmail: "",
+      projectDescription: "",
+      githubRepoLink: "",
+      registrationId: "", // For Phase 2
+    };
   });
 
-  const [teamMembers, setTeamMembers] = useState([{ name: "", email: "" }]);
+  const [teamMembers, setTeamMembers] = useState(() => {
+    const saved = localStorage.getItem("codekarx_cached_team_members");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse cached team members");
+      }
+    }
+    return [{ name: "", email: "" }];
+  });
   const [files, setFiles] = useState<Record<string, File | null>>({});
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -99,10 +119,39 @@ const CandidateForm = () => {
     setFetchingData(true);
     try {
 
-
-      const data = await candidateApi.getApplicationByRegId(regIdInput);
+      const data = await candidateApi.getApplicationByRegId(regIdInput.trim());
       if (data) {
-        setFormData({
+        if (data.registrationType) {
+          setRegType(data.registrationType);
+          localStorage.setItem("codekarx_reg_type", data.registrationType);
+        }
+        if (data.teamMembers) {
+          setTeamMembers(data.teamMembers);
+          localStorage.setItem("codekarx_cached_team_members", JSON.stringify(data.teamMembers));
+        }
+
+        let isSubmitted = false;
+        // Auto switch to phase 2 if phase 1 is completed
+        if (data.phase1?.projectDescription) {
+          if (globalPhase === 1) {
+            isSubmitted = true;
+          } else if (globalPhase === 2) {
+            if (data.phase2?.githubRepoLink) {
+              isSubmitted = true;
+            }
+            setPhase("2");
+          }
+        } else if (globalPhase === 2) {
+          setPhase("2");
+        }
+
+        setSubmitted(isSubmitted);
+        localStorage.setItem("codekarx_cached_submitted", isSubmitted.toString());
+
+        setShowCodePopup(false);
+        localStorage.setItem("codekarx_reg_id", regIdInput);
+
+        const newFormData = {
           ...formData,
           firstName: data.firstName || "",
           lastName: data.lastName || "",
@@ -116,34 +165,15 @@ const CandidateForm = () => {
           projectDescription: data.phase1?.projectDescription || "",
           githubRepoLink: data.phase2?.githubRepoLink || "",
           registrationId: data.registrationId,
-        });
+        };
 
-        if (data.registrationType) setRegType(data.registrationType);
-        if (data.teamMembers) setTeamMembers(data.teamMembers);
+        setFormData(newFormData);
+        localStorage.setItem("codekarx_cached_form_data", JSON.stringify(newFormData));
 
-        // Auto switch to phase 2 if phase 1 is completed
-        if (data.phase1?.projectDescription) {
-          // If global phase is still 1 but they finished it, we might want to show phase 1 success or allow phase 2 if allowed
-          // However, the user specifically asked for "phase 2 only once the phase 2 start"
-          if (globalPhase === 1) {
-            setSubmitted(true);
-          } else if (globalPhase === 2) {
-            if (data.phase2?.githubRepoLink) {
-              setSubmitted(true);
-            }
-            setPhase("2");
-          }
-        } else if (globalPhase === 2) {
-          // If it's phase 2 globally but they haven't done phase 1? 
-          // Usually phase 1 is prerequisite.
-          setPhase("2");
+        if (e) {
+          toast({ title: "Portal Authenticated", description: "Your project details have been loaded." });
         }
-
-        setShowCodePopup(false);
-        localStorage.setItem("codekarx_reg_id", regIdInput);
-        toast({ title: "Portal Authenticated", description: "Your project details have been loaded." });
       }
-    } catch (err: any) {
       // Only show error if explicitly submitted via button or if input length is sufficient
       if (e || regIdInput.length >= 10) {
         toast({
@@ -160,12 +190,14 @@ const CandidateForm = () => {
   // Automatic fetch when code is entered or on mount if code exists
   useEffect(() => {
     const checkAndFetch = async () => {
-      if (regIdInput.length >= 5 && !formData.registrationId) {
+      // If we have a regId but no data yet, fetch immediately (visible)
+      // If we have both, fetch in background (silent)
+      if (regIdInput.length >= 5) {
         await handleFetchData();
       }
     };
     checkAndFetch();
-  }, [regIdInput, formData.registrationId]);
+  }, [regIdInput]);
 
   useEffect(() => {
     const initPhase = async () => {
@@ -188,6 +220,10 @@ const CandidateForm = () => {
 
   const handleClearSession = () => {
     localStorage.removeItem("codekarx_reg_id");
+    localStorage.removeItem("codekarx_cached_form_data");
+    localStorage.removeItem("codekarx_cached_submitted");
+    localStorage.removeItem("codekarx_cached_team_members");
+    localStorage.removeItem("codekarx_reg_type");
     setRegIdInput("");
     setFormData({
       firstName: "",
@@ -249,6 +285,8 @@ const CandidateForm = () => {
         }
 
         await candidateApi.submitPhase1(payload);
+        setSubmitted(true);
+        localStorage.setItem("codekarx_cached_submitted", "true");
         toast({ title: "Upload Successful", description: "Your phase 1 project details have been updated." });
       } else {
         // Phase 2 Submission
@@ -273,6 +311,8 @@ const CandidateForm = () => {
         }
 
         await candidateApi.submitPhase2(payload);
+        setSubmitted(true);
+        localStorage.setItem("codekarx_cached_submitted", "true");
         toast({ title: "Upload Successful", description: "Your project files have been updated." });
       }
 
@@ -299,6 +339,15 @@ const CandidateForm = () => {
             <p className="text-xs text-slate-400 mt-4">
               You will receive email updates regarding your submission status from the HR team.
             </p>
+            <div className="pt-6">
+              <Button
+                variant="outline"
+                onClick={handleClearSession}
+                className="rounded-xl border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all font-bold text-xs"
+              >
+                SWITCH ACCOUNT
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -381,7 +430,7 @@ const CandidateForm = () => {
           </CardHeader>
 
           <form onSubmit={handleSubmit} className="relative">
-            {fetchingData && !showCodePopup && (
+            {fetchingData && !showCodePopup && !formData.registrationId && (
               <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center rounded-b-3xl">
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
