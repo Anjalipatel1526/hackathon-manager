@@ -305,9 +305,8 @@ function handleRequest(payload) {
         const uniqueEmails = [...new Set(emails.filter(e => e && e.toString().trim() !== ""))];
         const projectName = rawData[i][headers.indexOf("projectName")];
 
-        // ⚠️ REPLACE with your actual deployed frontend URL
-        const APP_URL = "https://codekarx.netlify.app"; // or your custom domain
-        const phase2Link = `${APP_URL}/phase2?id=${rowRegId}`;
+        const phase2Link = "https://codekarx.vercel.app/phase2";
+
 
         if (uniqueEmails.length > 0) {
           let subject, body;

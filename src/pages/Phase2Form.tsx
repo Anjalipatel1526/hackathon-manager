@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Github, FileText, FileArchive, Loader2, ShieldX, Lock } from "lucide-react";
+import { CheckCircle2, Github, FileText, FileArchive, Loader2, Lock, Mail } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { candidateApi } from "@/lib/api";
 
 const toBase64 = (file: File) =>
@@ -19,8 +19,8 @@ const toBase64 = (file: File) =>
         reader.onerror = (error) => reject(error);
     });
 
-// ─── Confetti for Phase 2 success ─────────────────────────────────────────────
-const COLORS = ["#10b981", "#6366f1", "#f59e0b", "#ec4899", "#06b6d4", "#f97316"];
+// ─── Confetti ─────────────────────────────────────────────────────────────────
+const COLORS = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899"];
 const MiniConfetti = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     useEffect(() => {
@@ -28,10 +28,9 @@ const MiniConfetti = () => {
         const ctx = canvas.getContext("2d")!;
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        const particles: any[] = Array.from({ length: 120 }, () => ({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height - canvas.height,
-            w: Math.random() * 10 + 5, h: Math.random() * 5 + 3,
+        const particles: any[] = Array.from({ length: 150 }, () => ({
+            x: Math.random() * canvas.width, y: Math.random() * canvas.height - canvas.height,
+            w: Math.random() * 12 + 6, h: Math.random() * 6 + 3,
             color: COLORS[Math.floor(Math.random() * COLORS.length)],
             speed: Math.random() * 3 + 2, rotate: Math.random() * Math.PI * 2,
             rotateSpeed: (Math.random() - 0.5) * 0.1, drift: (Math.random() - 0.5) * 1.5,
@@ -55,37 +54,37 @@ const MiniConfetti = () => {
 };
 
 const Phase2Form = () => {
-    const [searchParams] = useSearchParams();
-    const registrationId = (searchParams.get("id") || "").trim();
-
-    const [status, setStatus] = useState<"loading" | "blocked" | "ready" | "submitted">("loading");
+    const [email, setEmail] = useState("");
+    const [lookupLoading, setLookupLoading] = useState(false);
     const [candidate, setCandidate] = useState<any>(null);
+    const [denied, setDenied] = useState(false);
+
     const [githubLink, setGithubLink] = useState("");
     const [files, setFiles] = useState<Record<string, File | null>>({});
     const [submitting, setSubmitting] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+
     const { toast } = useToast();
 
-    // ─── Verify approval on mount ─────────────────────────────────────────────
-    useEffect(() => {
-        if (!registrationId) { setStatus("blocked"); return; }
-        const verify = async () => {
-            try {
-                const data = await candidateApi.getApplicationByRegId(registrationId);
-                if (data && data.status === "Approved") {
-                    setCandidate(data);
-                    setStatus("ready");
-                } else {
-                    setStatus("blocked");
-                }
-            } catch {
-                setStatus("blocked");
+    const handleLookup = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email.trim()) return;
+        setLookupLoading(true);
+        setDenied(false);
+        try {
+            const data = await candidateApi.getApplicationByEmail(email.trim().toLowerCase());
+            if (data && data.status === "Approved") {
+                setCandidate(data);
+            } else if (data) {
+                setDenied(true);
+            } else {
+                toast({ title: "Not Found", description: "No registration found for this email.", variant: "destructive" });
             }
-        };
-        verify();
-    }, [registrationId]);
-
-    const handleFileChange = (key: string, file: File | null) => {
-        setFiles(prev => ({ ...prev, [key]: file }));
+        } catch {
+            toast({ title: "Not Found", description: "No registration found for this email.", variant: "destructive" });
+        } finally {
+            setLookupLoading(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -101,7 +100,7 @@ const Phase2Form = () => {
                 : `${candidate.teamName}_${candidate.teamLeaderEmail}`.replace(/[^a-zA-Z0-9.@_-]/g, "_");
 
             const payload: any = {
-                data: { registrationId, githubRepoLink: githubLink, candidateIdentity: identity },
+                data: { registrationId: candidate.registrationId, githubRepoLink: githubLink, candidateIdentity: identity },
                 files: {}
             };
             if (files.readme) {
@@ -115,7 +114,7 @@ const Phase2Form = () => {
                 payload.files.finalZip = fd;
             }
             await candidateApi.submitPhase2(payload);
-            setStatus("submitted");
+            setSubmitted(true);
         } catch (err: any) {
             toast({ title: "Submission Failed", description: err.message, variant: "destructive" });
         } finally {
@@ -123,61 +122,28 @@ const Phase2Form = () => {
         }
     };
 
-    // ─── Loading ───────────────────────────────────────────────────────────────
-    if (status === "loading") {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-12 w-12 animate-spin text-indigo-600" />
-                    <p className="text-slate-500 font-bold uppercase tracking-widest text-sm">Verifying access...</p>
-                </div>
-            </div>
-        );
-    }
-
-    // ─── Blocked (not approved / no token) ────────────────────────────────────
-    if (status === "blocked") {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-rose-950 to-slate-900 p-4">
-                <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-10 text-center shadow-2xl animate-in fade-in zoom-in duration-700">
-                    <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Lock className="h-10 w-10 text-rose-400" />
-                    </div>
-                    <h1 className="text-3xl font-black text-white uppercase tracking-tight mb-3">Access Denied</h1>
-                    <p className="text-slate-400 font-bold leading-relaxed mb-2">
-                        Phase 2 is only available to <span className="text-rose-400">Approved</span> candidates.
-                    </p>
-                    <p className="text-slate-500 text-sm font-medium">
-                        If you've been approved, please use the link from your approval email.
-                        <br />Contact the organizers if you believe this is a mistake.
-                    </p>
-                    <div className="mt-8 p-4 bg-white/5 rounded-2xl border border-white/10">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                            🔒 This page requires an approved registration ID
-                        </p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     // ─── Success ───────────────────────────────────────────────────────────────
-    if (status === "submitted") {
+    if (submitted) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center font-sans overflow-hidden"
-                style={{ background: "linear-gradient(135deg, #064e3b 0%, #065f46 40%, #047857 100%)" }}>
+                style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4c1d95 100%)" }}>
                 <MiniConfetti />
                 <div className="relative z-50 w-full max-w-md mx-4 animate-in fade-in zoom-in duration-700">
                     <div className="bg-white rounded-[2.5rem] shadow-[0_30px_80px_rgba(0,0,0,0.5)] overflow-hidden text-center">
-                        <div className="bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 p-8">
+                        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 p-8">
                             <div className="text-6xl mb-3 animate-bounce">🏆</div>
-                            <h1 className="text-3xl font-black text-white uppercase tracking-tighter">Phase 2 Submitted!</h1>
-                            <p className="text-emerald-100 font-bold mt-2 text-sm">You've made it to the final round!</p>
+                            <h1 className="text-3xl font-black text-white uppercase tracking-tighter leading-tight">
+                                Phase 2 Submitted!<br />
+                                <span className="text-yellow-300">All The Best!</span>
+                            </h1>
+                            <p className="text-indigo-100 font-bold mt-2 text-sm opacity-90">
+                                🚀 You've made it to the final round!
+                            </p>
                         </div>
                         <div className="p-8 space-y-4">
                             <p className="text-slate-600 font-bold leading-relaxed">
-                                Your final project submission has been received.<br />
-                                <span className="text-emerald-600">All the best — we'll be in touch soon! 🌟</span>
+                                Your final project has been received.<br />
+                                <span className="text-indigo-600">We'll be in touch soon! 🌟</span>
                             </p>
                             <p className="text-slate-400 text-sm italic">"The best projects are built with passion and purpose."</p>
                         </div>
@@ -187,157 +153,226 @@ const Phase2Form = () => {
         );
     }
 
-    // ─── Phase 2 Form ──────────────────────────────────────────────────────────
     const name = candidate?.registrationType === "Individual"
         ? `${candidate?.firstName || ""} ${candidate?.lastName || ""}`.trim()
         : candidate?.teamName;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50/30 to-slate-50 py-12 px-4 font-sans">
-            <div className="mx-auto max-w-2xl">
-                <div className="mb-10 text-center space-y-3">
-                    <div className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-emerald-200">
-                        <CheckCircle2 className="h-3 w-3" /> Approved – Phase 2 Unlocked
-                    </div>
-                    <h1 className="text-5xl font-black tracking-tight text-slate-900 italic uppercase">
-                        PHASE 2 <br />
-                        <span className="text-emerald-600 underline decoration-emerald-200 decoration-8 underline-offset-4">SUBMISSION</span>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-50 py-12 px-4 font-sans">
+            <div className="mx-auto max-w-3xl">
+
+                {/* Page Header — same style as CandidateForm */}
+                <div className="mb-12 text-center space-y-3">
+                    <Badge className="text-[10px] font-black px-3 py-1 mb-2 tracking-widest uppercase rounded-full shadow-lg bg-indigo-600 shadow-indigo-200">
+                        Phase 2 Active
+                    </Badge>
+                    <h1 className="text-4xl font-black tracking-tight text-slate-900 sm:text-6xl italic uppercase leading-none">
+                        CODEKARX <br />
+                        <span className="text-indigo-600 underline decoration-indigo-200 decoration-8 underline-offset-4">PHASE 2</span>
                     </h1>
-                    <p className="text-slate-500 font-bold">
-                        Welcome back, <span className="text-emerald-700 font-black">{name}</span>! 🎯
+                    <p className="text-sm font-bold text-slate-500 tracking-widest uppercase">
+                        Phase 2: Final Submission
                     </p>
                 </div>
 
-                {/* Project info banner */}
-                <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-2xl p-5 space-y-3">
-                    <div className="flex items-center gap-3">
-                        <CheckCircle2 className="h-8 w-8 text-emerald-600 shrink-0" />
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Project</p>
-                            <p className="font-black text-emerald-900 text-lg">{candidate?.projectName}</p>
-                            <p className="text-xs text-emerald-600 font-bold">{candidate?.track} · {candidate?.registrationType}</p>
-                        </div>
-                    </div>
-
-                    {/* Team members — shown for Team registrations */}
-                    {candidate?.registrationType === "Team" && (
-                        <div className="border-t border-emerald-200 pt-3 space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">Team Roster</p>
-                            {/* Leader */}
-                            <div className="flex items-center gap-3 bg-emerald-100 rounded-xl px-4 py-2">
-                                <span className="text-sm">👑</span>
+                {/* ─── Step 1: Email Lookup ─── */}
+                {!candidate && (
+                    <Card className="shadow-[0_20px_60px_rgba(99,102,241,0.12)] border-none bg-white/90 backdrop-blur-xl rounded-[2.5rem] overflow-hidden ring-1 ring-indigo-100 mb-6">
+                        {/* Card header — same gradient as CandidateForm */}
+                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-8">
+                            <div className="flex items-center gap-3">
+                                <Mail className="h-8 w-8 text-white" />
                                 <div>
-                                    <p className="text-xs font-black text-emerald-800">{candidate?.teamLeaderName || candidate?.teamName}</p>
-                                    <p className="text-[11px] text-emerald-600 font-medium">{candidate?.teamLeaderEmail} · Leader</p>
-                                </div>
-                            </div>
-                            {/* Other members */}
-                            {[1, 2, 3].map(i => {
-                                const memberName = candidate?.[`member${i}Name`];
-                                const memberEmail = candidate?.[`member${i}Email`];
-                                if (!memberEmail) return null;
-                                return (
-                                    <div key={i} className="flex items-center gap-3 bg-white border border-emerald-100 rounded-xl px-4 py-2">
-                                        <span className="text-sm">👤</span>
-                                        <div>
-                                            <p className="text-xs font-black text-slate-700">{memberName || `Member ${i}`}</p>
-                                            <p className="text-[11px] text-slate-500 font-medium">{memberEmail}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {/* Individual — show name */}
-                    {candidate?.registrationType === "Individual" && (
-                        <div className="border-t border-emerald-200 pt-3">
-                            <div className="flex items-center gap-3 bg-emerald-100 rounded-xl px-4 py-2">
-                                <span className="text-sm">👤</span>
-                                <div>
-                                    <p className="text-xs font-black text-emerald-800">{candidate?.firstName} {candidate?.lastName}</p>
-                                    <p className="text-[11px] text-emerald-600 font-medium">{candidate?.email}</p>
+                                    <h2 className="text-2xl font-black text-white tracking-tight uppercase">Verify Access</h2>
+                                    <p className="text-indigo-200 text-sm font-bold mt-0.5">Enter your registered email to continue</p>
                                 </div>
                             </div>
                         </div>
-                    )}
-                </div>
 
-                <form onSubmit={handleSubmit}>
-                    <Card className="shadow-[0_20px_50px_rgba(16,185,129,0.1)] border-none bg-white/90 backdrop-blur-xl rounded-[2.5rem] overflow-hidden ring-1 ring-emerald-100">
-                        <CardHeader className="bg-emerald-600 text-white p-8">
-                            <CardTitle className="text-2xl font-black flex items-center gap-3 tracking-tighter uppercase">
-                                <Github className="h-7 w-7" /> Submit Your Final Project
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-8 space-y-8">
-                            {/* GitHub Link */}
-                            <div className="space-y-3">
-                                <Label className="text-xs font-black uppercase tracking-widest text-emerald-600">
-                                    GitHub Repository Link *
-                                </Label>
-                                <div className="relative">
-                                    <Github className="absolute left-4 top-4 h-5 w-5 text-emerald-500" />
-                                    <Input
-                                        type="url"
-                                        placeholder="https://github.com/username/project"
-                                        value={githubLink}
-                                        onChange={e => setGithubLink(e.target.value)}
-                                        className="h-14 pl-12 rounded-2xl border-emerald-200 font-bold text-emerald-900 focus:ring-4 focus:ring-emerald-100 bg-slate-50"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* File uploads */}
-                            <div className="grid md:grid-cols-2 gap-6">
-                                {/* README */}
-                                <div className="space-y-3">
+                        <CardContent className="p-10 space-y-6">
+                            <form onSubmit={handleLookup} className="space-y-5">
+                                <div className="space-y-2">
                                     <Label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                        Project README (PDF/DOC) *
+                                        Registered Email Address *
                                     </Label>
-                                    <label className="relative flex items-center gap-3 h-16 cursor-pointer px-4 bg-emerald-50 rounded-xl border-2 border-emerald-100 hover:border-emerald-400 transition-all overflow-hidden">
-                                        <FileText className="h-5 w-5 text-emerald-500 shrink-0" />
-                                        <span className="text-sm font-bold text-emerald-700 truncate">
-                                            {files.readme ? files.readme.name : "Select README file"}
-                                        </span>
-                                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer"
-                                            onChange={e => handleFileChange("readme", e.target.files?.[0] || null)} required />
-                                    </label>
-                                </div>
-                                {/* ZIP */}
-                                <div className="space-y-3">
-                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                        Source Code ZIP (Optional)
-                                    </Label>
-                                    <label className="relative flex items-center gap-3 h-16 cursor-pointer px-4 bg-slate-50 rounded-xl border-2 border-slate-100 hover:border-slate-300 transition-all overflow-hidden">
-                                        <FileArchive className="h-5 w-5 text-slate-400 shrink-0" />
-                                        <span className="text-sm font-bold text-slate-500 truncate">
-                                            {files.finalZip ? files.finalZip.name : "Select ZIP file"}
-                                        </span>
-                                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer"
-                                            onChange={e => handleFileChange("finalZip", e.target.files?.[0] || null)} />
-                                    </label>
-                                </div>
-                            </div>
-
-                            <Button
-                                type="submit"
-                                disabled={submitting}
-                                className="w-full h-16 text-lg font-black rounded-3xl bg-emerald-600 hover:bg-emerald-700 text-white uppercase tracking-[0.1em] shadow-2xl shadow-emerald-200 transition-all active:scale-95"
-                            >
-                                {submitting ? (
-                                    <div className="flex items-center gap-3">
-                                        <Loader2 className="h-5 w-5 animate-spin" /> Submitting...
+                                    <div className="relative">
+                                        <Mail className="absolute left-4 top-4 h-5 w-5 text-indigo-400" />
+                                        <Input
+                                            type="email"
+                                            placeholder="you@example.com"
+                                            value={email}
+                                            onChange={e => setEmail(e.target.value)}
+                                            className="h-14 pl-12 rounded-2xl border-slate-200 font-bold text-slate-900 focus:ring-4 focus:ring-indigo-100 bg-slate-50 focus:border-indigo-300"
+                                            required
+                                        />
                                     </div>
-                                ) : "Submit Final Project 🚀"}
-                            </Button>
+                                    <p className="text-xs text-slate-400 font-medium pl-1">
+                                        Team members: any registered team email works (leader or member).
+                                    </p>
+                                </div>
+                                <Button
+                                    type="submit"
+                                    disabled={lookupLoading}
+                                    className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest shadow-lg shadow-indigo-100 transition-all active:scale-95"
+                                >
+                                    {lookupLoading
+                                        ? <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Verifying...</>
+                                        : "Verify & Continue →"}
+                                </Button>
+                            </form>
+
+                            {/* Not approved message */}
+                            {denied && (
+                                <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <Lock className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-black text-rose-700 text-sm">Not Approved Yet</p>
+                                        <p className="text-rose-500 text-xs font-medium mt-1">
+                                            Your Phase 1 application hasn't been approved yet. Please wait for the results email from Codekarx.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
-                </form>
+                )}
 
-                <div className="mt-8 text-center text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">
-                    Phase 2 • Codekarx Hackathon 2026
+                {/* ─── Step 2: Confirmed + Submission Form ─── */}
+                {candidate && (
+                    <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-6">
+
+                        {/* Candidate / Team info banner */}
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-3">
+                            <div className="flex items-center gap-3">
+                                <CheckCircle2 className="h-8 w-8 text-indigo-600 shrink-0" />
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">
+                                        Welcome back, {name}! 🎯
+                                    </p>
+                                    <p className="font-black text-slate-900 text-lg">{candidate.projectName}</p>
+                                    <p className="text-xs text-indigo-500 font-bold">{candidate.track} · {candidate.registrationType} · <span className="text-emerald-600">Approved ✅</span></p>
+                                </div>
+                            </div>
+
+                            {/* Team roster */}
+                            {candidate.registrationType === "Team" && (
+                                <div className="border-t border-indigo-100 pt-3 space-y-2">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-1">Team Roster</p>
+                                    <div className="flex items-center gap-3 bg-indigo-100 rounded-xl px-4 py-2">
+                                        <span className="text-sm">👑</span>
+                                        <div>
+                                            <p className="text-xs font-black text-indigo-900">{candidate.teamLeaderName || candidate.teamName}</p>
+                                            <p className="text-[11px] text-indigo-600">{candidate.teamLeaderEmail} · Leader</p>
+                                        </div>
+                                    </div>
+                                    {[1, 2, 3].map(i => {
+                                        const mn = candidate[`member${i}Name`]; const me = candidate[`member${i}Email`];
+                                        if (!me) return null;
+                                        return (
+                                            <div key={i} className="flex items-center gap-3 bg-white border border-indigo-100 rounded-xl px-4 py-2">
+                                                <span className="text-sm">👤</span>
+                                                <div>
+                                                    <p className="text-xs font-black text-slate-700">{mn || `Member ${i}`}</p>
+                                                    <p className="text-[11px] text-slate-500">{me}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {candidate.registrationType === "Individual" && (
+                                <div className="border-t border-indigo-100 pt-3">
+                                    <div className="flex items-center gap-3 bg-indigo-100 rounded-xl px-4 py-2">
+                                        <span className="text-sm">👤</span>
+                                        <div>
+                                            <p className="text-xs font-black text-indigo-900">{candidate.firstName} {candidate.lastName}</p>
+                                            <p className="text-[11px] text-indigo-600">{candidate.email}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Submission form card */}
+                        <form onSubmit={handleSubmit}>
+                            <Card className="shadow-[0_20px_60px_rgba(99,102,241,0.12)] border-none bg-white/90 backdrop-blur-xl rounded-[2.5rem] overflow-hidden ring-1 ring-indigo-100">
+                                <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-8">
+                                    <div className="flex items-center gap-3">
+                                        <Github className="h-8 w-8 text-white" />
+                                        <div>
+                                            <h2 className="text-2xl font-black text-white tracking-tight uppercase">Final Submission</h2>
+                                            <p className="text-indigo-200 text-sm font-bold mt-0.5">Submit your project files</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <CardContent className="p-10 space-y-8">
+                                    {/* GitHub Link */}
+                                    <div className="space-y-3">
+                                        <Label className="text-xs font-black uppercase tracking-widest text-slate-500">GitHub Repository Link *</Label>
+                                        <div className="relative">
+                                            <Github className="absolute left-4 top-4 h-5 w-5 text-indigo-400" />
+                                            <Input
+                                                type="url"
+                                                placeholder="https://github.com/username/project"
+                                                value={githubLink}
+                                                onChange={e => setGithubLink(e.target.value)}
+                                                className="h-14 pl-12 rounded-2xl border-slate-200 font-bold text-slate-900 focus:ring-4 focus:ring-indigo-100 bg-slate-50"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* File uploads */}
+                                    <div className="grid md:grid-cols-2 gap-6">
+                                        {/* README */}
+                                        <div className="space-y-3">
+                                            <Label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                                Project README (PDF/DOC) *
+                                            </Label>
+                                            <label className="relative flex flex-col items-center justify-center gap-2 h-28 cursor-pointer px-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all overflow-hidden">
+                                                <FileText className="h-7 w-7 text-indigo-400" />
+                                                <span className="text-sm font-bold text-slate-500 truncate text-center px-2">
+                                                    {files.readme ? files.readme.name : "Select README file"}
+                                                </span>
+                                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer"
+                                                    onChange={e => setFiles(p => ({ ...p, readme: e.target.files?.[0] || null }))} required />
+                                            </label>
+                                        </div>
+                                        {/* ZIP */}
+                                        <div className="space-y-3">
+                                            <Label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                                Source Code ZIP (Optional)
+                                            </Label>
+                                            <label className="relative flex flex-col items-center justify-center gap-2 h-28 cursor-pointer px-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 hover:border-slate-400 transition-all overflow-hidden">
+                                                <FileArchive className="h-7 w-7 text-slate-400" />
+                                                <span className="text-sm font-bold text-slate-400 truncate text-center px-2">
+                                                    {files.finalZip ? files.finalZip.name : "Select ZIP file"}
+                                                </span>
+                                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer"
+                                                    onChange={e => setFiles(p => ({ ...p, finalZip: e.target.files?.[0] || null }))} />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        type="submit"
+                                        disabled={submitting}
+                                        className="w-full h-16 text-lg font-black rounded-3xl bg-indigo-600 hover:bg-indigo-700 text-white uppercase tracking-[0.1em] shadow-2xl shadow-indigo-200 transition-all active:scale-95"
+                                    >
+                                        {submitting
+                                            ? <div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin" /> Submitting...</div>
+                                            : "Complete Phase 2 Submission 🚀"}
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        </form>
+                    </div>
+                )}
+
+                <div className="mt-12 text-center text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">
+                    Powering the next generation of innovators • Codekarx 2026
                 </div>
             </div>
         </div>
