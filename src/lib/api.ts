@@ -8,6 +8,9 @@ if (!API_BASE_URL) {
 }
 
 const gasPost = async (body: object) => {
+    if (!API_BASE_URL) {
+        throw new Error('API URL not configured. Please set VITE_GOOGLE_SCRIPT_URL in Vercel environment variables and redeploy.');
+    }
     const response = await fetch(API_BASE_URL, {
         method: 'POST',
         body: JSON.stringify(body),

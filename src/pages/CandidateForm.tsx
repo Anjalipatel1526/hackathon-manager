@@ -206,6 +206,7 @@ const CandidateForm = () => {
       return;
     }
 
+    setLoading(true);
     try {
       const identity = regType === "Individual"
         ? `${formData.firstName}_${formData.email}`.replace(/[^a-zA-Z0-9.@_-]/g, "_")
