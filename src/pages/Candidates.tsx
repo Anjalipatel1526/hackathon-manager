@@ -171,10 +171,10 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
             {filterStatus ? `${filterStatus} Submissions` : "All Applications"}
           </h1>
-          <p className="text-slate-500">Manage registrations and project submissions</p>
+          <p className="text-slate-500 text-sm sm:text-base">Manage registrations and project submissions</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="bg-white">

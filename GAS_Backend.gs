@@ -261,6 +261,51 @@ function handleRequest(payload) {
           if (colIdx !== -1) appSheet.getRange(i + 1, colIdx + 1).setValue(updates[key]);
         });
 
+        // ─── Send Phase 2 Confirmation Email ────────────────────────────────
+        try {
+          const isTeam = rowDataObj.registrationType === "Team";
+          const projectName = rowDataObj.projectName || "Your Project";
+          const submittedAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd MMM yyyy, hh:mm a");
+
+          // Collect all emails
+          const emailFields = ["email", "teamLeaderEmail", "member1Email", "member2Email", "member3Email"];
+          const allEmails = emailFields
+            .map(f => (rowDataObj[f] || "").toString().trim().toLowerCase())
+            .filter(e => e && e.includes("@"));
+          const uniqueEmails = [...new Set(allEmails)];
+
+          const teamLine = isTeam
+            ? `Team: ${rowDataObj.teamName || "—"}\nLeader: ${rowDataObj.teamLeaderName || rowDataObj.teamLeaderEmail || "—"}`
+            : `Name: ${rowDataObj.firstName || ""} ${rowDataObj.lastName || ""}`.trim();
+
+          const subject = `✅ Final Round Submission Received – ${projectName}`;
+          const body = `Hi,
+
+Your Final Round submission for the Codekarx Hackathon has been received! 🎉
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏆 FINAL ROUND SUBMISSION DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Project  : ${projectName}
+Track    : ${rowDataObj.track || "—"}
+${teamLine}
+GitHub   : ${data.githubRepoLink || "—"}
+Submitted: ${submittedAt}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Our panel will review your final submission and announce the results soon.
+
+You've made it to the Final Round — give it your best! 🚀
+
+Warm regards,
+Codekarx Team`;
+
+          uniqueEmails.forEach(email => {
+            try { GmailApp.sendEmail(email, subject, body); } catch (e) {}
+          });
+        } catch (emailErr) {}
+        // ────────────────────────────────────────────────────────────────────
+
         return createResponse({ result: "success", message: "Phase 2 Updated" });
       }
     }

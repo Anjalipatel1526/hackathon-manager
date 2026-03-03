@@ -383,9 +383,9 @@ const CandidateForm = () => {
   return (
     <>
       <ValidationToast message={validationMsg} onClose={() => setValidationMsg("")} />
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-50 py-12 px-4 font-sans">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-50 py-8 sm:py-12 px-3 sm:px-4 font-sans">
         <div className="mx-auto max-w-3xl">
-          <div className="mb-12 text-center space-y-3">
+          <div className="mb-8 sm:mb-12 text-center space-y-3">
             <Badge className={`text-[10px] font-black px-3 py-1 mb-2 tracking-widest uppercase rounded-full shadow-lg ${globalPhase === 1 ? "bg-indigo-600 shadow-indigo-200" : "bg-emerald-600 shadow-emerald-200"}`}>
               {globalPhase === 1 ? "Registration Open" : "Phase 2 Active"}
             </Badge>
@@ -397,9 +397,9 @@ const CandidateForm = () => {
             </p>
           </div>
 
-          <Card className="shadow-[0_20px_50px_rgba(8,112,184,0.07)] border-none bg-white/80 backdrop-blur-xl rounded-[2.5rem] overflow-hidden ring-1 ring-slate-200/50">
-            <CardHeader className={`${globalPhase === 1 ? "bg-indigo-600" : "bg-emerald-600"} text-white p-10`}>
-              <CardTitle className="text-3xl font-black flex items-center gap-3 tracking-tighter uppercase">
+          <Card className="shadow-[0_20px_50px_rgba(8,112,184,0.07)] border-none bg-white/80 backdrop-blur-xl rounded-3xl sm:rounded-[2.5rem] overflow-hidden ring-1 ring-slate-200/50">
+            <CardHeader className={`${globalPhase === 1 ? "bg-indigo-600" : "bg-emerald-600"} text-white p-6 sm:p-10`}>
+              <CardTitle className="text-xl sm:text-3xl font-black flex items-center gap-3 tracking-tighter uppercase">
                 <Upload className="h-8 w-8" />
                 {globalPhase === 1 ? "New Registration" : "Phase 2 Portal"}
               </CardTitle>
@@ -410,14 +410,14 @@ const CandidateForm = () => {
 
             {/* ════ PHASE 1 FORM ════ */}
             {globalPhase === 1 && (
-              <form onSubmit={handlePhase1Submit} className="p-10 space-y-8">
+              <form onSubmit={handlePhase1Submit} className="p-4 sm:p-8 md:p-10 space-y-8">
                 {/* Registration Type */}
                 <div className="space-y-3">
                   <Label className="text-xs font-black uppercase tracking-widest text-slate-500">Registration Type</Label>
                   <RadioGroup
                     value={regType}
                     onValueChange={(v: any) => setRegType(v)}
-                    className="flex gap-6"
+                    className="flex flex-wrap gap-4"
                   >
                     <div className="flex items-center space-x-2 bg-slate-50 px-4 py-3 rounded-xl border border-slate-100 cursor-pointer hover:bg-white transition-colors">
                       <RadioGroupItem value="Individual" id="p1-individual" />
@@ -610,7 +610,8 @@ const CandidateForm = () => {
 
             {/* ════ PHASE 2 FORM ════ */}
             {globalPhase === 2 && (
-              <div className="p-10 space-y-8">
+              <div className="p-4 sm:p-8 md:p-10 space-y-8">
+
                 {/* Step 1: Registration Type + Email Lookup */}
                 {!fetchedData && (
                   <div className="space-y-8 animate-in fade-in duration-500">

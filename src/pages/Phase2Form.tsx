@@ -158,11 +158,11 @@ const Phase2Form = () => {
         : candidate?.teamName;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-50 py-12 px-4 font-sans">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-50 py-8 sm:py-12 px-3 sm:px-4 font-sans">
             <div className="mx-auto max-w-3xl">
 
-                {/* Page Header — same style as CandidateForm */}
-                <div className="mb-12 text-center space-y-3">
+                {/* Page Header */}
+                <div className="mb-8 sm:mb-12 text-center space-y-3">
                     <Badge className="text-[10px] font-black px-3 py-1 mb-2 tracking-widest uppercase rounded-full shadow-lg bg-indigo-600 shadow-indigo-200">
                         Phase 2 Active
                     </Badge>
@@ -177,19 +177,19 @@ const Phase2Form = () => {
 
                 {/* ─── Step 1: Email Lookup ─── */}
                 {!candidate && (
-                    <Card className="shadow-[0_20px_60px_rgba(99,102,241,0.12)] border-none bg-white/90 backdrop-blur-xl rounded-[2.5rem] overflow-hidden ring-1 ring-indigo-100 mb-6">
-                        {/* Card header — same gradient as CandidateForm */}
-                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-8">
+                    <Card className="shadow-[0_20px_60px_rgba(99,102,241,0.12)] border-none bg-white/90 backdrop-blur-xl rounded-3xl sm:rounded-[2.5rem] overflow-hidden ring-1 ring-indigo-100 mb-6">
+                        {/* Card header */}
+                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-6 sm:p-8">
                             <div className="flex items-center gap-3">
-                                <Mail className="h-8 w-8 text-white" />
+                                <Mail className="h-7 sm:h-8 w-7 sm:w-8 text-white" />
                                 <div>
-                                    <h2 className="text-2xl font-black text-white tracking-tight uppercase">Verify Access</h2>
+                                    <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">Verify Access</h2>
                                     <p className="text-indigo-200 text-sm font-bold mt-0.5">Enter your registered email to continue</p>
                                 </div>
                             </div>
                         </div>
 
-                        <CardContent className="p-10 space-y-6">
+                        <CardContent className="p-5 sm:p-8 md:p-10 space-y-6">
                             <form onSubmit={handleLookup} className="space-y-5">
                                 <div className="space-y-2">
                                     <Label className="text-xs font-black uppercase tracking-widest text-slate-500">
@@ -296,18 +296,18 @@ const Phase2Form = () => {
 
                         {/* Submission form card */}
                         <form onSubmit={handleSubmit}>
-                            <Card className="shadow-[0_20px_60px_rgba(99,102,241,0.12)] border-none bg-white/90 backdrop-blur-xl rounded-[2.5rem] overflow-hidden ring-1 ring-indigo-100">
-                                <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-8">
+                            <Card className="shadow-[0_20px_60px_rgba(99,102,241,0.12)] border-none bg-white/90 backdrop-blur-xl rounded-3xl sm:rounded-[2.5rem] overflow-hidden ring-1 ring-indigo-100">
+                                <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-6 sm:p-8">
                                     <div className="flex items-center gap-3">
-                                        <Github className="h-8 w-8 text-white" />
+                                        <Github className="h-7 sm:h-8 w-7 sm:w-8 text-white" />
                                         <div>
-                                            <h2 className="text-2xl font-black text-white tracking-tight uppercase">Final Submission</h2>
+                                            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">Final Submission</h2>
                                             <p className="text-indigo-200 text-sm font-bold mt-0.5">Submit your project files</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <CardContent className="p-10 space-y-8">
+                                <CardContent className="p-5 sm:p-8 md:p-10 space-y-8">
                                     {/* GitHub Link */}
                                     <div className="space-y-3">
                                         <Label className="text-xs font-black uppercase tracking-widest text-slate-500">GitHub Repository Link *</Label>
