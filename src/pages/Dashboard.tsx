@@ -148,35 +148,39 @@ const Dashboard = () => {
                         <TrendingUp className="h-4 w-4 text-emerald-500" /> Codekarx Hackathon System Overview • Phase 1 & 2 Analytics
                     </p>
                 </div>
-                <div className="flex gap-6 items-center bg-white/50 backdrop-blur-sm px-4 py-2 rounded-2xl border border-slate-200/60 shadow-sm">
+                <div className={`flex gap-6 items-center ${realTimeEnabled ? 'bg-emerald-50 border-emerald-200 shadow-emerald-100' : 'bg-white/50 border-slate-200/60'} backdrop-blur-sm px-4 py-2 rounded-2xl border transition-all duration-500 shadow-sm`}>
                     <div className="flex items-center space-x-2">
                         <Switch
                             id="real-time-mode"
                             checked={realTimeEnabled}
                             onCheckedChange={toggleRealTime}
-                            className="data-[state=checked]:bg-emerald-500"
+                            className="data-[state=checked]:bg-emerald-600"
                         />
-                        <Label htmlFor="real-time-mode" className="text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer flex items-center gap-1.5">
-                            {realTimeEnabled && <Activity className="h-3 w-3 text-emerald-500 animate-pulse" />}
+                        <Label htmlFor="real-time-mode" className={`text-[10px] font-black uppercase tracking-widest ${realTimeEnabled ? 'text-emerald-700' : 'text-slate-500'} cursor-pointer flex items-center gap-1.5 whitespace-nowrap`}>
+                            {realTimeEnabled && <Activity className="h-3 w-3 text-emerald-600 animate-pulse" />}
                             Live Updates
                         </Label>
                     </div>
 
-                    <div className="h-4 w-[1px] bg-slate-200" />
+                    <div className={`h-4 w-[1px] ${realTimeEnabled ? 'bg-emerald-200' : 'bg-slate-200'}`} />
 
                     <div className="flex gap-4 items-center">
-                        {isFetching && (
-                            <div className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full animate-pulse border border-indigo-100">
+                        {isFetching ? (
+                            <div className={`${realTimeEnabled ? 'text-emerald-600' : 'text-indigo-600'} animate-pulse flex items-center gap-1.5`}>
                                 <Clock className="h-3 w-3 animate-spin" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest">
-                                    {realTimeEnabled ? "Syncing..." : "Refreshing..."}
+                                <span className="text-[10px] font-black uppercase tracking-widest">
+                                    {realTimeEnabled ? "Syncing..." : "Fetching..."}
                                 </span>
                             </div>
-                        )}
-                        {!isFetching && (
-                            <Button variant="ghost" size="sm" onClick={() => refetch()} className="text-slate-400 hover:text-indigo-600 h-8 w-8 p-0 rounded-full transition-all">
-                                <RotateCw className="h-4 w-4" />
-                            </Button>
+                        ) : (
+                            <div className="flex items-center gap-4">
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${realTimeEnabled ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                    {realTimeEnabled ? "Watching" : "Paused"}
+                                </span>
+                                <Button variant="ghost" size="sm" onClick={() => refetch()} className="text-slate-400 hover:text-indigo-600 h-8 w-8 p-0 rounded-full transition-all">
+                                    <RotateCw className="h-4 w-4" />
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </div>

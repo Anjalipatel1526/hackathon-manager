@@ -178,29 +178,30 @@ const Candidates = ({ filterStatus, filterTrack }: CandidatesPageProps) => {
           <p className="text-slate-500 text-sm sm:text-base">Manage registrations and project submissions</p>
         </div>
         <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex items-center gap-6 bg-white/50 backdrop-blur-sm px-4 py-2 rounded-2xl border border-slate-200/60 shadow-sm mr-2">
+          <div className={`flex items-center gap-6 ${realTimeEnabled ? 'bg-emerald-50 border-emerald-200 shadow-emerald-100' : 'bg-white/50 border-slate-200/60'} backdrop-blur-sm px-4 py-2 rounded-2xl border transition-all duration-500 shadow-sm mr-2`}>
             <div className="flex items-center space-x-2">
               <Switch
                 id="real-time-mode-candidates"
                 checked={realTimeEnabled}
                 onCheckedChange={toggleRealTime}
-                className="data-[state=checked]:bg-emerald-500 scale-90"
+                className="data-[state=checked]:bg-emerald-600 scale-90"
               />
-              <Label htmlFor="real-time-mode-candidates" className="text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
-                {realTimeEnabled && <Activity className="h-3 w-3 text-emerald-500 animate-pulse" />}
-                Live
+              <Label htmlFor="real-time-mode-candidates" className={`text-[10px] font-black uppercase tracking-widest ${realTimeEnabled ? 'text-emerald-700' : 'text-slate-500'} cursor-pointer flex items-center gap-1.5 whitespace-nowrap`}>
+                {realTimeEnabled && <Activity className="h-3 w-3 text-emerald-600 animate-pulse" />}
+                Live Updates
               </Label>
             </div>
-            <div className="h-4 w-[1px] bg-slate-200" />
+            <div className={`h-4 w-[1px] ${realTimeEnabled ? 'bg-emerald-200' : 'bg-slate-200'}`} />
             <div className="flex items-center gap-2">
-              {isFetching && (
-                <div className="flex items-center gap-1.5 text-indigo-600 animate-pulse">
+              {isFetching ? (
+                <div className={`${realTimeEnabled ? 'text-emerald-600' : 'text-indigo-600'} animate-pulse flex items-center gap-1.5`}>
                   <Clock className="h-3 w-3 animate-spin" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Syncing</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">{realTimeEnabled ? "Syncing..." : "Fetching..."}</span>
                 </div>
-              )}
-              {!isFetching && (
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Idle</span>
+              ) : (
+                <span className={`text-[10px] font-black uppercase tracking-widest ${realTimeEnabled ? 'text-emerald-400' : 'text-slate-300'}`}>
+                  {realTimeEnabled ? "Watching" : "Paused"}
+                </span>
               )}
             </div>
           </div>

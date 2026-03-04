@@ -26,9 +26,10 @@ export const GlobalDataProvider = ({ children }: { children: React.ReactNode }) 
 
     const [realTimeEnabled, setRealTimeEnabled] = useState(() => {
         try {
-            return localStorage.getItem("codekarx_real_time") === "true";
+            const saved = localStorage.getItem("codekarx_real_time");
+            return saved === null ? true : saved === "true"; // Default to true
         } catch (e) {
-            return false;
+            return true;
         }
     });
 
@@ -49,7 +50,7 @@ export const GlobalDataProvider = ({ children }: { children: React.ReactNode }) 
         staleTime: 5 * 60 * 1000,
         gcTime: 1000 * 60 * 60 * 24, // 24 hours
         initialData: cachedData.length > 0 ? cachedData : undefined,
-        refetchInterval: realTimeEnabled ? 10000 : 0, // Poll every 10 seconds if enabled
+        refetchInterval: realTimeEnabled ? 5000 : 0, // Poll every 5 seconds if enabled
         refetchIntervalInBackground: true,
     });
 
