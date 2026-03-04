@@ -706,7 +706,7 @@ const CandidateForm = () => {
                               value={formData.githubRepoLink}
                               onChange={handleInputChange}
                               placeholder="https://github.com/username/project"
-                              className="h-16 pl-14 rounded-2xl border-emerald-200 bg-white font-bold text-emerald-900 focus:ring-emerald-200"
+                              className="h-14 sm:h-16 pl-14 rounded-2xl border-emerald-200 bg-white font-bold text-sm sm:text-lg text-emerald-900 focus:ring-emerald-200"
                               required
                             />
                           </div>
@@ -738,7 +738,7 @@ const CandidateForm = () => {
 
                     <Button
                       type="submit"
-                      className="w-full h-14 sm:h-16 text-lg sm:text-xl font-black rounded-2xl sm:rounded-3xl shadow-2xl transition-all active:scale-95 disabled:opacity-50 tracking-tight sm:tracking-[0.1em] uppercase bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200"
+                      className="w-full h-14 sm:h-16 text-base sm:text-xl font-black rounded-2xl sm:rounded-3xl shadow-2xl transition-all active:scale-95 disabled:opacity-50 tracking-tight sm:tracking-[0.1em] uppercase bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200"
                       disabled={loading}
                     >
                       {loading ? (

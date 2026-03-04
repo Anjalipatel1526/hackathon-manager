@@ -177,7 +177,7 @@ const Phase2Form = () => {
 
                 {/* ─── Step 1: Email Lookup ─── */}
                 {!candidate && (
-                    <Card className="shadow-[0_20px_60px_rgba(99,102,241,0.12)] border-none bg-white/90 backdrop-blur-xl rounded-3xl sm:rounded-[2.5rem] overflow-hidden ring-1 ring-indigo-100 mb-6">
+                    <Card className="shadow-[0_20px_60px_rgba(99,102,241,0.12)] border-none bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-[2.5rem] overflow-hidden ring-1 ring-indigo-100 mb-6">
                         {/* Card header */}
                         <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-6 sm:p-8">
                             <div className="flex items-center gap-3">
@@ -189,7 +189,7 @@ const Phase2Form = () => {
                             </div>
                         </div>
 
-                        <CardContent className="p-5 sm:p-8 md:p-10 space-y-6">
+                        <CardContent className="p-4 sm:p-8 md:p-10 space-y-6">
                             <form onSubmit={handleLookup} className="space-y-5">
                                 <div className="space-y-2">
                                     <Label className="text-xs font-black uppercase tracking-widest text-slate-500">
@@ -296,7 +296,7 @@ const Phase2Form = () => {
 
                         {/* Submission form card */}
                         <form onSubmit={handleSubmit}>
-                            <Card className="shadow-[0_20px_60px_rgba(99,102,241,0.12)] border-none bg-white/90 backdrop-blur-xl rounded-3xl sm:rounded-[2.5rem] overflow-hidden ring-1 ring-indigo-100">
+                            <Card className="shadow-[0_20px_60px_rgba(99,102,241,0.12)] border-none bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-[2.5rem] overflow-hidden ring-1 ring-indigo-100">
                                 <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-6 sm:p-8">
                                     <div className="flex items-center gap-3">
                                         <Github className="h-7 sm:h-8 w-7 sm:w-8 text-white" />
@@ -307,7 +307,7 @@ const Phase2Form = () => {
                                     </div>
                                 </div>
 
-                                <CardContent className="p-5 sm:p-8 md:p-10 space-y-8">
+                                <CardContent className="p-4 sm:p-8 md:p-10 space-y-6 sm:space-y-8">
                                     {/* GitHub Link */}
                                     <div className="space-y-3">
                                         <Label className="text-xs font-black uppercase tracking-widest text-slate-500">GitHub Repository Link *</Label>
@@ -331,9 +331,9 @@ const Phase2Form = () => {
                                             <Label className="text-xs font-black uppercase tracking-widest text-slate-500">
                                                 Project README (PDF/DOC) *
                                             </Label>
-                                            <label className="relative flex flex-col items-center justify-center gap-2 h-28 cursor-pointer px-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all overflow-hidden">
-                                                <FileText className="h-7 w-7 text-indigo-400" />
-                                                <span className="text-sm font-bold text-slate-500 truncate text-center px-2">
+                                            <label className="relative flex flex-col items-center justify-center gap-2 h-24 sm:h-28 cursor-pointer px-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all overflow-hidden">
+                                                <FileText className="h-6 w-6 sm:h-7 sm:w-7 text-indigo-400" />
+                                                <span className="text-xs sm:text-sm font-bold text-slate-500 truncate text-center px-2">
                                                     {files.readme ? files.readme.name : "Select README file"}
                                                 </span>
                                                 <input type="file" className="absolute inset-0 opacity-0 cursor-pointer"
@@ -345,9 +345,9 @@ const Phase2Form = () => {
                                             <Label className="text-xs font-black uppercase tracking-widest text-slate-500">
                                                 Source Code ZIP (Optional)
                                             </Label>
-                                            <label className="relative flex flex-col items-center justify-center gap-2 h-28 cursor-pointer px-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 hover:border-slate-400 transition-all overflow-hidden">
-                                                <FileArchive className="h-7 w-7 text-slate-400" />
-                                                <span className="text-sm font-bold text-slate-400 truncate text-center px-2">
+                                            <label className="relative flex flex-col items-center justify-center gap-2 h-24 sm:h-28 cursor-pointer px-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 hover:border-slate-400 transition-all overflow-hidden">
+                                                <FileArchive className="h-6 w-6 sm:h-7 sm:w-7 text-slate-400" />
+                                                <span className="text-xs sm:text-sm font-bold text-slate-400 truncate text-center px-2">
                                                     {files.finalZip ? files.finalZip.name : "Select ZIP file"}
                                                 </span>
                                                 <input type="file" className="absolute inset-0 opacity-0 cursor-pointer"
@@ -359,7 +359,7 @@ const Phase2Form = () => {
                                     <Button
                                         type="submit"
                                         disabled={submitting}
-                                        className="w-full h-16 text-lg font-black rounded-3xl bg-indigo-600 hover:bg-indigo-700 text-white uppercase tracking-[0.1em] shadow-2xl shadow-indigo-200 transition-all active:scale-95"
+                                        className="w-full h-14 sm:h-16 text-sm sm:text-lg font-black rounded-2xl sm:rounded-3xl bg-indigo-600 hover:bg-indigo-700 text-white uppercase tracking-tight sm:tracking-[0.1em] shadow-2xl shadow-indigo-200 transition-all active:scale-95"
                                     >
                                         {submitting
                                             ? <div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin" /> Submitting...</div>
